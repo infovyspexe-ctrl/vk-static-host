@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Кладовая</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background: #2c1f14;
+    }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas { display: block; touch-action: none; }
+  </style>
+</head>
+<body>
+  <!-- Индикатор загрузки виден с ПЕРВОГО кадра (до всех скриптов): даже если
+       SDK-хост недоступен, игрок видит спиннер, а не пустой экран (чек-лист B11).
+       Прячет его main.js после старта игры. -->
+  <div id="boot">
+    <div id="boot-spin"></div>
+    <style>
+      #boot { position: fixed; inset: 0; display: flex; align-items: center;
+              justify-content: center; background: #2c1f14; z-index: 50; }
+      #boot-spin { width: 64px; height: 64px; border-radius: 50%;
+                   border: 6px solid #6b4a2f; border-top-color: #e8963f;
+                   animation: bootspin 0.9s linear infinite; }
+      @keyframes bootspin { to { transform: rotate(360deg); } }
+    </style>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Отключение контекстного меню в игровой области — требование Яндекса §1.6 -->
+  <script>document.addEventListener('contextmenu', function (e) { e.preventDefault(); });</script>
+
+  <!-- Yandex Games SDK.  для разработки, build.py сам убирает его при сборке релиза -->
+  <script src="https://yandex.ru/games/sdk/v2"></script>
+
+  <!-- VK Bridge (VK Mini Apps = VK + ОК + Mail.ru) — локально в vendor/, не с CDN
+       (CONVENTIONS.md §15). Безвредно вне VK: адаптер зовётся, только когда слой
+       определил площадку по launch-параметрам URL. -->
+  <script src="vendor/vk-bridge.min.js"></script>
+
+  <!-- Matter.js и poly-decomp (вогнутые контуры плодов) — локально в vendor/ -->
+  <script src="vendor/poly-decomp.min.js"></script>
+  <script src="vendor/matter.min.js"></script>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
