@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Решала</title>
+  <!-- Пустая иконка: без неё браузер стучится за /favicon.ico и сорит 404 в консоль
+       (ловилось смоук-тестом в двух играх подряд). Перед релизом заменить на иконку игры. -->
+  <link rel="icon" href="assets/favicon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1d2b3a; }
+    #game { width: 100vw; height: 100vh; }
+    canvas { display: block; }
+    /* Статичный лоадер поверх пустого фона: показывается СРАЗУ при открытии и держится,
+       пока грузится площадка (SDK) и создаётся Phaser. Без него первые секунды —
+       пустой тёмный экран, который читается как «игра не грузится» (и валит требование
+       Яндекса к заявке CSP «игра запускается без доступа к хостам»). main.js убирает его,
+       когда стартует Phaser и появляется своя полоса загрузки. */
+    #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #1d2b3a; z-index: 10; }
+    #boot .spin { width: 52px; height: 52px; border: 5px solid #2f4258; border-top-color: #f5a623; border-radius: 50%; animation: boot-rot 0.9s linear infinite; }
+    @keyframes boot-rot { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="boot"><div class="spin"></div></div>
+
+  <!-- Площадочный SDK НЕ подключаем тегом: используем ТОЛЬКО GamePush, а он грузит
+       свой скрипт сам (gamepush.com/sdk/...) и внутри себя тянет SDK нужной площадки
+       (Яндекс/VK/...). Один SDK на все площадки — см. src/platform/adapters/gamepush.js.
+       ВАЖНО для прода Яндекса: внести gamepush.com в CSP консоли разработчика. -->
+
+  <!-- Phaser 3 лежит локально в vendor/: без внешних CDN, надёжнее на модерации -->
+  <script src="vendor/phaser.min.js"></script>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
