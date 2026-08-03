@@ -526,8 +526,8 @@ export const Render = {
     }
 
     this.drawJarGauge();
-    this.drawRoundButton(LAYOUT.sound, Audio.enabled ? '🔊' : '🔇');
-    this.drawRoundButton(LAYOUT.pantryBtn, '🏺');
+    this.drawRoundButton(LAYOUT.sound, Audio.enabled ? 'sound' : 'soundOff');
+    this.drawRoundButton(LAYOUT.pantryBtn, 'pantry');
     // Ярмарка готова — кладовая зовёт: пульсирующее кольцо вокруг кнопки
     if (Game.fairReady()) {
       const ctx = this.ctx;
@@ -647,7 +647,8 @@ export const Render = {
     ctx.textBaseline = 'alphabetic';
   },
 
-  drawRoundButton(rect, emoji) {
+  // icon: 'sound' | 'soundOff' | 'pantry' — векторные пути, не эмодзи (см. drawButtonIcon).
+  drawRoundButton(rect, icon) {
     const ctx = this.ctx;
     const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
     const r = rect.w / 2;
@@ -668,11 +669,62 @@ export const Render = {
     ctx.strokeStyle = C.panelBorder;
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = '36px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, cx, cy + 2);
-    ctx.textBaseline = 'alphabetic';
+    this.drawButtonIcon(icon, cx, cy, r);
+  },
+
+  // Векторные иконки вместо эмодзи для круглых кнопок. Canvas fillText с цветным эмодзи
+  // ненадёжен в некоторых WebView площадок — на iOS (VK Mini Apps) отрисовывался сплошным
+  // силуэтом/пропадал вовсе (отказ модерации VK 2026-07-29: «не подгружаются изображения
+  // кнопок»). Простые пути одинаковы на любом движке, без зависимости от эмодзи-шрифта.
+  drawButtonIcon(icon, cx, cy, r) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.fillStyle = C.text;
+    ctx.strokeStyle = C.text;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    if (icon === 'sound' || icon === 'soundOff') {
+      // Динамик: коробка + расширяющийся раструб.
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.5, cy - r * 0.22);
+      ctx.lineTo(cx - r * 0.18, cy - r * 0.22);
+      ctx.lineTo(cx + r * 0.15, cy - r * 0.5);
+      ctx.lineTo(cx + r * 0.15, cy + r * 0.5);
+      ctx.lineTo(cx - r * 0.18, cy + r * 0.22);
+      ctx.lineTo(cx - r * 0.5, cy + r * 0.22);
+      ctx.closePath();
+      ctx.fill();
+      if (icon === 'sound') {
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.2, cy, r * 0.34, -Math.PI / 3.4, Math.PI / 3.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx + r * 0.2, cy, r * 0.56, -Math.PI / 4, Math.PI / 4);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.2, cy - r * 0.32);
+        ctx.lineTo(cx + r * 0.62, cy + r * 0.32);
+        ctx.moveTo(cx + r * 0.62, cy - r * 0.32);
+        ctx.lineTo(cx + r * 0.2, cy + r * 0.32);
+        ctx.stroke();
+      }
+    } else if (icon === 'pantry') {
+      // Мини-банка: тот же силуэт, что и крынка на игровом поле — узнаваемо, без эмодзи.
+      const w = r * 0.62, h = r * 0.82, lidH = r * 0.24, top = cy - h / 2, radius = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - w / 2, top + lidH);
+      ctx.lineTo(cx + w / 2, top + lidH);
+      ctx.lineTo(cx + w / 2, top + h - radius);
+      ctx.quadraticCurveTo(cx + w / 2, top + h, cx + w / 2 - radius, top + h);
+      ctx.lineTo(cx - w / 2 + radius, top + h);
+      ctx.quadraticCurveTo(cx - w / 2, top + h, cx - w / 2, top + h - radius);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = C.accent;
+      ctx.fillRect(cx - w / 2 - 2, top, w + 4, lidH);
+    }
+    ctx.restore();
   },
 
   drawJarGauge() {
@@ -822,7 +874,14 @@ export const Render = {
     ctx.fillRect(0, 0, CONFIG.W, CONFIG.H);
 
     const showRescue = !Game.rescueUsed;
-    const ph = showRescue ? 590 : 490;
+    // Строка «банки + рецепты» на одной строке шириной панели (520px) не проходит:
+    // с длинными переводами (или когда закрыто и то, и другое) текст вылезал за панель
+    // — отказ модерации VK 2026-07-29 («Текст выходит за границы окна»), поймано на
+    // партии, где закрылось сразу несколько рецептов (в наших коротких смоук-тестах
+    // recipesThisGame почти всегда был 0, поэтому вторая половина строки не рисовалась
+    // и баг не всплывал). Рецепты — отдельной строкой, а не склейкой через пробелы.
+    const hasRecipes = Game.recipesThisGame > 0;
+    const ph = (showRescue ? 590 : 490) + (hasRecipes ? 24 : 0);
     const px = 100, pw = 520, py = (CONFIG.H - ph) / 2 - 60;
     this.panelRect(px, py, pw, ph, THEME.radius.panel);
 
@@ -834,15 +893,15 @@ export const Render = {
       CONFIG.W / 2, py + 186,
       { font: font('sub'), color: Game.newBest ? C.good : C.textDim, align: 'center' });
     // Итог «что я приобрела», а не «я проиграла»: банки и новые рецепты партии.
-    let summary = '🏺 ' + i18n.t('overJars', { n: Game.jarsThisGame });
-    if (Game.recipesThisGame > 0) {
-      summary += '   ✨ ' + i18n.t('overRecipes', { n: Game.recipesThisGame });
-    }
-    this.text(summary, CONFIG.W / 2, py + 236,
+    this.text('🏺 ' + i18n.t('overJars', { n: Game.jarsThisGame }), CONFIG.W / 2, py + 228,
       { font: font('sub'), color: C.good, align: 'center' });
+    if (hasRecipes) {
+      this.text('✨ ' + i18n.t('overRecipes', { n: Game.recipesThisGame }), CONFIG.W / 2, py + 260,
+        { font: font('sub'), color: C.good, align: 'center' });
+    }
     ctx.textAlign = 'center';
 
-    let by = py + 280;
+    let by = py + (hasRecipes ? 304 : 280);
     if (showRescue) {
       this.drawButton('rescue', px + 60, by, pw - 120, 88,
         '📺 ' + i18n.t('rescueBtn'), { sub: i18n.t('rescueHint') });
