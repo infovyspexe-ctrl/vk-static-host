@@ -114,8 +114,12 @@ async function start() {
     window.debug = { Game, Physics, Platform, Pantry, Audio };
   }
 
-  // Ключевая точка сейва: уход со страницы.
+  // Ключевая точка сейва: уход со страницы. pagehide — вместе с beforeunload/
+  // visibilitychange: в сандбокс-iframe VK Mini Apps (веб) и в мобильных WebView эти
+  // события ведут себя не так надёжно, как в обычной вкладке браузера (грабля №3,
+  // adapters/vk.js) — дублируем, лишний flush() при пустом кеше это no-op.
   window.addEventListener('beforeunload', () => Platform.save.flush());
+  window.addEventListener('pagehide', () => Platform.save.flush());
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) Platform.save.flush();
   });

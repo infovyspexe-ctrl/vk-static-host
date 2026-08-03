@@ -49,8 +49,29 @@ const STORAGE_KEY = 'save'; // весь сейв одной строкой JSON 
 export const VkAdapter = {
   name: 'vk',
   available: false,
-  storageAvailable: false, // Init может пройти вне клиента VK, а StorageGet — нет: щупаем отдельно
   bridge: null,
+
+  // ГРАБЛЯ №3, реальный отказ модерации (2026-07-29): «Прогресс сбрасывается при
+  // обновлении страницы». Причина — ДВЕ ошибки разом:
+  //
+  // 1) Раньше здесь был отдельный щуп storageAvailable через VKWebAppStorageGet с
+  //    таймаутом 2 с. В реальном VK-клиенте (не в нашем локальном смоук-тесте, где
+  //    VKWebAppInit ВСЕГДА уходил в таймаут и облако не проверялось вовсе) первый
+  //    вызов бриджа может отвечать дольше 2 с — щуп ложно решал «облака нет», и ВЕСЬ
+  //    сеанс игра писала только в локальное зеркало.
+  // 2) Веб-версия VK Mini Apps рисуется в САНДБОКС-iframe: localStorage внутри него
+  //    не переживает обновление страницы (в отличие от iOS/Safari — это НЕ то же
+  //    самое условие, для которого сделан safeStorage() у Яндекса). Зеркало на VK
+  //    ненадёжно ВСЕГДА, не только при сбое.
+  //
+  // Вместе это значило: без реального облачного гейта прогресс держался только на
+  // зеркале, которое VK стирает при рефреше — ровно то, на что пожаловался модератор.
+  //
+  // Фикс: storage.isAvailable больше не зависит от отдельного щупа (см. ниже) — только
+  // от того, поднялся ли сам bridge. Дополнительно — flushDelayMs (слой читает его в
+  // update()) резко сокращает окно между действием игрока и реальной записью в облако,
+  // раз зеркало на этой площадке подстраховать её не может.
+  flushDelayMs: 300,
 
   async init() {
     await loadVkBridge();
@@ -73,21 +94,13 @@ export const VkAdapter = {
     } catch (e) {
       console.warn('[platform:vk] ошибка VKWebAppInit, режим без SDK', e);
       this.available = false;
-      return;
-    }
-    try {
-      await Promise.race([
-        this.bridge.send('VKWebAppStorageGet', { keys: ['__probe'] }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('storage timeout')), 2000)),
-      ]);
-      this.storageAvailable = true;
-    } catch (e) {
-      console.warn('[platform:vk] облачное хранилище недоступно, играем на зеркале', e);
     }
   },
 
   // Хранилище VK асинхронное (только через bridge.send) — синхронный Storage-подобный
-  // объект отдать не можем. null — слой сам уйдёт на обычный localStorage для зеркала.
+  // объект отдать не можем. null — слой уходит на обычный localStorage для зеркала, но
+  // на VK это только подстраховка МЕЖДУ облачными записями (см. грабля №3 выше) —
+  // зеркало здесь не переживает обновление страницы, положиться на него нельзя.
   safeStorage() { return null; },
 
   ready() {}, // аналога LoadingAPI.ready у VK Bridge нет
@@ -142,7 +155,7 @@ export const VkAdapter = {
   },
 
   storage: {
-    isAvailable(a) { return a.available && a.storageAvailable; },
+    isAvailable(a) { return a.available; },
 
     async read(a) {
       try {

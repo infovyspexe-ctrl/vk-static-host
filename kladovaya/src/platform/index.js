@@ -45,6 +45,15 @@ if (GAME_ID === 'game') {
 const MIRROR_KEY = GAME_ID + '_save_local'; // локальное зеркало облака
 const FLUSH_DELAY_MS = 2000;                // склейка частых update() в одну запись
 
+// Адаптер может переопределить задержку (ADAPTER.flushDelayMs) — нужно площадкам, где
+// локальное зеркало не переживает обновление страницы (VK: сандбокс-iframe стирает
+// localStorage при рефреше, см. грабля №3 в adapters/vk.js), поэтому там окно между
+// действием игрока и записью в облако должно быть коротким, а не растягиваться на
+// экономию запросов, как у Яндекса/GamePush.
+function flushDelay() {
+  return typeof ADAPTER.flushDelayMs === 'number' ? ADAPTER.flushDelayMs : FLUSH_DELAY_MS;
+}
+
 // Поднимай на 1 при каждом изменении структуры сохранений.
 const SAVE_VERSION = 1;
 
@@ -164,7 +173,7 @@ export const Platform = {
       Platform._dirty = true;
       writeMirror(Platform.cache);
       clearTimeout(Platform._timer);
-      Platform._timer = setTimeout(() => Platform.save._write(), FLUSH_DELAY_MS);
+      Platform._timer = setTimeout(() => Platform.save._write(), flushDelay());
     },
 
     // Полная замена объекта. ОСТОРОЖНО: сносит поля, записанные другими системами
