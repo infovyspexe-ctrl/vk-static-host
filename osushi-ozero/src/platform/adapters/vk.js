@@ -92,6 +92,48 @@ export const VkAdapter = {
 
   ready() {}, // аналога LoadingAPI.ready у VK Bridge нет
 
+  // Где запущено: desktop_web | mobile_web | mobile_android | mobile_iphone | mobile_ipad.
+  platform() { return launchParams().get('vk_platform') || ''; },
+  isDesktop() { return /desktop/.test(this.platform()); },
+
+  // Sticky-баннер VK живёт только в мобильных клиентах. На десктопе его нет, и место
+  // под него превращается в пустую полосу — ровно то, за что VK отклонил игру 02.08
+  // («большие отступы, которые не несут функциональной нагрузки»).
+  hasStickyBanner() { return this.available && !this.isDesktop(); },
+
+  // ФРЕЙМ ПОД ИГРУ. Десктопный VK по умолчанию даёт альбомный фрейм (замер: 911×700), и
+  // портретная игра занимает в нём треть ширины — остальное пустые поля. Единственный
+  // законный способ это исправить со стороны игры — попросить свой размер окна.
+  //
+  // Замер живьём (2026-08-02, app54703509): ширину меньше 630 площадка НЕ отдаёт —
+  // просили 400, вернула 630. Высота отдаётся любая (700, 996, 1067 — как просили).
+  // Поэтому берём минимальную ширину и считаем высоту под пропорции игры: 630×1120.
+  // Так делают и чужие игры каталога (у «Родной деревни» фрейм 701×1000).
+  //
+  // Возвращает фактический внутренний размер окна или null, если менять нечего/нельзя.
+  async fitFrame(aspect) {
+    if (!this.available || !this.isDesktop()) return null;
+    const MIN_W = 630;
+    const width = MIN_W;
+    const height = Math.round(MIN_W / aspect);
+    try {
+      await this.bridge.send('VKWebAppResizeWindow', { width, height });
+    } catch (e) {
+      console.warn('[platform:vk] не удалось изменить размер фрейма', e);
+      return null;
+    }
+    // Площадка меняет размер айфрейма асинхронно: ждём, пока окно реально станет другим,
+    // иначе игра посчитает пропорции по СТАРОМУ размеру и поля вернутся.
+    const before = window.innerWidth;
+    for (let i = 0; i < 40; i++) {
+      if (window.innerWidth !== before) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    await new Promise((r) => setTimeout(r, 100));
+    console.log('[platform:vk] фрейм под игру:', window.innerWidth + '×' + window.innerHeight);
+    return { width: window.innerWidth, height: window.innerHeight };
+  },
+
   // У VK Bridge нет отдельного API вроде GameplayAPI.start/stop — паузу вокруг рекламы
   // всё равно ставит слой через шину событий, здесь ничего звать не нужно.
   gameplayStart() {},

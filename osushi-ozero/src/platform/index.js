@@ -96,6 +96,16 @@ export const Platform = {
   // null — вызывающий работает с обычным localStorage (см. core/safe-storage.js).
   safeStorage() { return ADAPTER.safeStorage ? ADAPTER.safeStorage() : null; },
 
+  // Попросить у площадки фрейм под пропорции игры. Умеет только VK-десктоп; остальные
+  // отвечают null, и игра просто подстраивает свою высоту под то, что дали.
+  // Зачем: портретная игра в альбомном фрейме — это пустые поля по бокам, за которые
+  // VK отклоняет («адаптируйте размеры игрового фрейма к игровому полю», отказ 02.08).
+  fitFrame(aspect) { return ADAPTER.fitFrame ? ADAPTER.fitFrame(aspect) : Promise.resolve(null); },
+
+  // Есть ли у площадки постоянный нижний баннер. Только когда есть — игра резервирует
+  // под него место; иначе полоса внизу пустая, и это тот же отказ про отступы.
+  hasStickyBanner() { return ADAPTER.hasStickyBanner ? ADAPTER.hasStickyBanner() : false; },
+
   gameplayStart() {
     this.gameplayActive = true;
     ADAPTER.gameplayStart();

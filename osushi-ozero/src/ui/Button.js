@@ -7,7 +7,7 @@ import { THEME } from './theme.js';
 import { Input } from '../core/input.js';
 
 export function createButton(scene, x, y, label, onClick, opts = {}) {
-  const color = opts.color ?? THEME.colors.primary;
+  let color = opts.color ?? THEME.colors.primary;
   const textColor = opts.textColor ?? THEME.colors.primaryText;
   const padX = THEME.button.paddingX;
   const padY = THEME.button.paddingY;
@@ -40,6 +40,18 @@ export function createButton(scene, x, y, label, onClick, opts = {}) {
   container.on('pointerup', () => { if (onClick) onClick(); });
 
   container.setLabel = (t) => { txt.setText(t); redraw(); };
+  // Смена цвета кнопки на лету (вкладки: активная — основная, неактивная — второстепенная).
+  // Держим ЦВЕТОМ, а не прозрачностью: погашенная кнопка хуже читается, а это причина
+  // отказа модерации VK 02.08 («цветовое решение не позволяет быстро читать текст»).
+  container.setColor = (fill, textCol) => {
+    color = fill;
+    txt.setColor(textCol ?? THEME.colors.primaryText);
+    redraw();
+  };
+  container.setTabActive = (on) => container.setColor(
+    on ? THEME.colors.primary : THEME.colors.neutral,
+    on ? THEME.colors.primaryText : THEME.colors.text
+  );
   Input.register(scene, container, () => { if (onClick) onClick(); });
   return container;
 }

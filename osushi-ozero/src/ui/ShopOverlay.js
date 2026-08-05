@@ -111,7 +111,9 @@ export class ShopOverlay {
       { fontSize: THEME.fontSize.tiny });
     this.root.add(btn); parts.push(btn);
 
-    return { item, btn, parts };
+    // Базовый Y каждой части — чтобы список можно было двигать целиком (layoutRows).
+    for (const p of parts) p.__baseY = p.y;
+    return { item, btn, parts, y };
   }
 
   setTab(tab) {
@@ -128,6 +130,25 @@ export class ShopOverlay {
     if (v) this.applyTabVisibility();
   }
 
+  // ЦЕНТРИРОВАНИЕ СПИСКА по свободной высоте. Высота сцены теперь зависит от пропорций
+  // окна (на вытянутом экране она больше 1280), и короткий список вёдер оставлял снизу
+  // пустое поле в пол-экрана. Двигаем блок строк целиком, ничего не пересобирая.
+  layoutRows() {
+    const rows = this.tab === 'buckets' ? this.bucketRows : this.hatRows;
+    if (!rows.length) return;
+    const { height } = this.scene.scale;
+    const top = rows[0].y - 46;                       // верх первой панели
+    const bottom = rows[rows.length - 1].y + 46;      // низ последней
+    const areaTop = 160;                              // под вкладками
+    const areaBottom = height - 210;                  // над кнопкой «+гемы за рекламу»
+    const dy = Math.max(0, Math.round(((areaTop + areaBottom) - (top + bottom)) / 2));
+    for (const list of [this.bucketRows, this.hatRows]) {
+      for (const row of list) {
+        for (const p of row.parts) p.y = p.__baseY + (list === rows ? dy : 0);
+      }
+    }
+  }
+
   applyTabVisibility() {
     const showBuckets = this.tab === 'buckets';
     for (const row of this.bucketRows) {
@@ -142,6 +163,7 @@ export class ShopOverlay {
         if (p.input) p.input.enabled = !showBuckets && this.root.visible;
       }
     }
+    this.layoutRows();
   }
 
   action(item) {
@@ -178,8 +200,14 @@ export class ShopOverlay {
   refresh() {
     if (!this.root.visible) return;
     this.gemsText.setText('◆ ' + Math.floor(this.api.getGems()));
-    this.bucketsTabBtn.setAlpha(this.tab === 'buckets' ? 1 : 0.55);
-    this.hatsTabBtn.setAlpha(this.tab === 'hats' ? 1 : 0.55);
+    // Неактивная вкладка раньше гасилась до alpha 0.55 — надпись на ней уходила в фон и
+    // читалась хуже, чем должна кнопка (отказ VK 02.08 про читаемость). Разница между
+    // вкладками теперь держится не прозрачностью, а тем же приёмом, что во всей игре:
+    // активная — зелёная, неактивная — серая, обе полностью непрозрачные.
+    this.bucketsTabBtn.setAlpha(1);
+    this.hatsTabBtn.setAlpha(1);
+    this.bucketsTabBtn.setTabActive(this.tab === 'buckets');
+    this.hatsTabBtn.setTabActive(this.tab === 'hats');
     this.applyTabVisibility();
 
     const rows = this.tab === 'buckets' ? this.bucketRows : this.hatRows;

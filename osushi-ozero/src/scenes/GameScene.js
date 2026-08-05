@@ -950,16 +950,21 @@ export class GameScene extends Phaser.Scene {
     this.tokensText = mk(26, '#ffd54f');
     this.gemsText = mk(66, '#4dd0e1');
     this.depthText = this.add.text(34, 106, '', {
-      fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.textDim, fontStyle: 'bold'
+      fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.text, fontStyle: 'bold'
     }).setScrollFactor(0).setDepth(101);
     // Надпись зоны центрируется НЕ по экрану, а по свободному полю между панелью HUD
     // (заканчивается на x=264) и кнопкой «В меню» (начинается примерно на width-128).
     // По центру экрана она левым краем уходила под панель на ~64 px — при 720 в ширину
     // это заметно во всех вьюпортах, потому что координата фиксированная.
     const zoneLeft = 264, zoneRight = width - 128;
+    // ПОДЛОЖКА под надписью зоны. Без неё белый текст лежит прямо на светлом небе —
+    // контраст около 1.6:1, надпись «плавает» и не читается (отказ VK 02.08:
+    // «цветовое решение не позволяет быстро читать текст»). Подложка того же вида, что
+    // у панели валют, поэтому вид игры не меняется — меняется только читаемость.
+    this.zonePlate = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.zoneText = this.add.text((zoneLeft + zoneRight) / 2, 30, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.tiny, color: THEME.colors.text,
-      align: 'center', wordWrap: { width: zoneRight - zoneLeft }
+      fontStyle: 'bold', align: 'center', wordWrap: { width: zoneRight - zoneLeft }
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
 
     this.menuBtn = createButton(this, width - 90, 50, i18n.t('toMenu'), () => this.exitToMenu(),
@@ -976,6 +981,7 @@ export class GameScene extends Phaser.Scene {
     this.boostBtn = createButton(this, 590, height - 56, i18n.t('boostBtn'), () => this.watchBoostAd(),
       { color: THEME.colors.accent, fontSize: THEME.fontSize.tiny });
     for (const b of [this.skillsBtn, this.shopBtn, this.boostBtn]) b.setScrollFactor(0).setDepth(101);
+    this.layoutBottomBar();
 
     this.tpBtn = createButton(this, width - 110, height - 150, i18n.t('teleportBtn'), () => this.teleport(),
       { color: THEME.colors.accent, fontSize: THEME.fontSize.tiny });
@@ -985,11 +991,64 @@ export class GameScene extends Phaser.Scene {
     this.toastY = 190;
     this.activeToasts = 0;
 
-    // Плашка заданий: текущее задание + дневная цель.
+    // Плашка заданий: текущее задание + дневная цель. Тоже на подложке — строки лежат
+    // поверх неба, а тонкая обводка жёлтого по светло-голубому читаемость не вытягивает.
+    this.questPlate = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.questText = this.add.text(20, 158, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.tiny, color: '#ffe082',
-      stroke: '#0e1621', strokeThickness: 4, lineSpacing: 6
+      fontStyle: 'bold', lineSpacing: 6
     }).setScrollFactor(0).setDepth(101);
+
+    // HUD целиком — чтобы разом гасить его на время оверлея. Затемнение оверлея
+    // полупрозрачное, и HUD просвечивал сквозь него, налезая на заголовок и вкладки
+    // магазина: два текста в одной точке — это и есть «текст не читается» (отказ VK).
+    this.hudItems = [
+      hudBg, this.tokensText, this.gemsText, this.depthText,
+      this.zonePlate, this.zoneText, this.menuBtn,
+      this.skillsBtn, this.shopBtn, this.boostBtn, this.tpBtn,
+      this.questPlate, this.questText,
+    ];
+  }
+
+  // РАСКЛАДКА НИЖНЕЙ ПАНЕЛИ по фактической ширине кнопок. Раньше центры были прибиты
+  // числами (140 / 370 / 590), и самая длинная кнопка — «×2 на 3 мин (реклама)» —
+  // вылезала за правый край: обрезанная надпись это и есть «текст не читается».
+  // Надпись кнопки меняется на ходу (идёт отсчёт буста), поэтому раскладка пересчитывается
+  // при каждой смене текста, а не один раз при сборке.
+  layoutBottomBar() {
+    const btns = [this.skillsBtn, this.shopBtn, this.boostBtn].filter(Boolean);
+    if (!btns.length) return;
+    const { width } = this.scale;
+    const margin = 18;
+    const gap = 14;
+    for (const b of btns) b.setScale(1);
+    let total = btns.reduce((s, b) => s + b.width, 0) + gap * (btns.length - 1);
+    const avail = width - margin * 2;
+    // Не влезает даже впритык — ужимаем всю панель разом, пропорции кнопок сохраняются.
+    const k = total > avail ? avail / total : 1;
+    if (k < 1) { for (const b of btns) b.setScale(k); total = avail; }
+    let x = (width - total) / 2;
+    for (const b of btns) {
+      const w = b.width * (k < 1 ? k : 1);
+      b.x = Math.round(x + w / 2);
+      x += w + gap * (k < 1 ? k : 1);
+    }
+  }
+
+  // Тёмная скруглённая подложка под текст поверх мира. Рисуется по ФАКТИЧЕСКИМ размерам
+  // надписи (текст меняется каждый кадр: глубина, счётчики заданий), поэтому пересчёт
+  // живёт в refreshHud, а не в buildHud.
+  drawTextPlate(plate, text, padX = 14, padY = 8) {
+    plate.clear();
+    if (!text.text || !text.visible) return;
+    const w = text.width + padX * 2;
+    const h = text.height + padY * 2;
+    const x = text.x - text.width * text.originX - padX;
+    const y = text.y - text.height * text.originY - padY;
+    plate.fillStyle(0x000000, 0.22);
+    plate.fillRoundedRect(x + 3, y + 3, w, h, 12);
+    plate.fillStyle(THEME.colors.panelDark, 0.85);
+    plate.fillRoundedRect(x, y, w, h, 12);
   }
 
   questLabel() {
@@ -1022,6 +1081,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   refreshHud() {
+    // Открыт оверлей — HUD прячем целиком (см. hudItems). Дальше считать нечего:
+    // ни одна надпись всё равно не видна, а лишняя работа идёт каждый кадр.
+    const overlay = this.overlayOpen();
+    if (this.hudItems) {
+      for (const o of this.hudItems) if (o) o.setVisible(!overlay);
+    }
+    if (overlay) return;
+
     this.tokensText.setText(String(Math.floor(this.tokens)));
     this.gemsText.setText(String(Math.floor(this.gems)));
     this.depthText.setText(i18n.t('depth', { m: this.lake.depth().toFixed(1) }));
@@ -1030,10 +1097,19 @@ export class GameScene extends Phaser.Scene {
       n: zi + 1, name: i18n.t('zone_' + this.zones[zi].id), mult: this.zones[zi].mult
     }));
 
-    if (this.boostRemain > 0) this.boostBtn.setLabel(i18n.t('boostActive', { s: Math.ceil(this.boostRemain) }));
-    else this.boostBtn.setLabel(i18n.t('boostBtn'));
+    const boostLabel = this.boostRemain > 0
+      ? i18n.t('boostActive', { s: Math.ceil(this.boostRemain) })
+      : i18n.t('boostBtn');
+    if (boostLabel !== this._boostLabel) {
+      this._boostLabel = boostLabel;
+      this.boostBtn.setLabel(boostLabel);
+      this.layoutBottomBar(); // надпись сменила ширину — панель переразложить
+    }
 
     this.questText.setText(this.questLabel());
+    // Подложки — после установки текстов: их размер зависит от того, что реально написано.
+    this.drawTextPlate(this.zonePlate, this.zoneText, 16, 7);
+    this.drawTextPlate(this.questPlate, this.questText, 12, 7);
 
     const tpLvl = this.tree.level('teleport');
     const showTp = tpLvl > 0;
