@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Орбитальный рубеж</title>
+    <!-- Путь относительный (base './'): игра живёт и в подпапке GitHub Pages для VK.
+         Без этого тега браузер сам просит /favicon.ico в КОРНЕ домена и получает 404 —
+         лишняя ошибка в консоли, за которой можно не заметить настоящую. -->
+    <link rel="icon" type="image/png" href="favicon-32.png" />
+    <!-- SDK Яндекса подключается УСЛОВНО, инлайн-скриптом, а не статическим тегом.
+         Две причины, обе оплачены отказами:
+         1) На VK Mini Apps любое обращение к домену Яндекса запрещено правилами (п.4.2.6 —
+            никаких упоминаний и ресурсов других площадок), да и не нужно: там свой bridge.
+            Признак VK — launch-параметр vk_app_id, который площадка сама кладёт в URL.
+         2) Вне iframe площадки (локальная разработка, GitHub Pages) SDK Яндекса сыпет
+            «No parent to post message» на самоинициализации — 20 ошибок в консоли, за
+            которыми не видно настоящих (шаблон v23, найдено на «Пицце-Мафии»).
+         Строка URL остаётся в index.html специально: релизная сборка (build.py) убирает
+         из неё  поиском по этому файлу. -->
+    <script>
+      (function () {
+        var inFrame = window !== window.parent;
+        var isVk = /[?&]vk_app_id=/.test(window.location.search);
+        if (!inFrame || isVk) return;
+        var s = document.createElement('script');
+        s.src = 'https://yandex.ru/games/sdk/v2';
+        document.head.appendChild(s);
+        // Флаг для sdk.js: тег вставлен, YaGames ЕЩЁ летит — надо его дождаться.
+        // Без флага sdk.init() не отличил бы «SDK сейчас будет» от «мы не на площадке».
+        window.__YA_SDK_PENDING__ = true;
+      })();
+    </script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #05060d;
+        /* На десктопе взаимодействие с полем игры не должно выделять текст/картинку
+           и вызывать браузерное поведение (отказ модерации, п.1.6.2.7). */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: none;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+      }
+      #game canvas {
+        touch-action: none;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DdcXT1kR.js"></script>
+  </head>
+  <body>
+    <div id="game"></div>
+  </body>
+</html>
