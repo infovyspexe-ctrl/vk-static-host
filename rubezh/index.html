@@ -11,29 +11,8 @@
          Без этого тега браузер сам просит /favicon.ico в КОРНЕ домена и получает 404 —
          лишняя ошибка в консоли, за которой можно не заметить настоящую. -->
     <link rel="icon" type="image/png" href="favicon-32.png" />
-    <!-- SDK Яндекса подключается УСЛОВНО, инлайн-скриптом, а не статическим тегом.
-         Две причины, обе оплачены отказами:
-         1) На VK Mini Apps любое обращение к домену Яндекса запрещено правилами (п.4.2.6 —
-            никаких упоминаний и ресурсов других площадок), да и не нужно: там свой bridge.
-            Признак VK — launch-параметр vk_app_id, который площадка сама кладёт в URL.
-         2) Вне iframe площадки (локальная разработка, GitHub Pages) SDK Яндекса сыпет
-            «No parent to post message» на самоинициализации — 20 ошибок в консоли, за
-            которыми не видно настоящих (шаблон v23, найдено на «Пицце-Мафии»).
-         Строка URL остаётся в index.html специально: релизная сборка (build.py) убирает
-         из неё  поиском по этому файлу. -->
-    <script>
-      (function () {
-        var inFrame = window !== window.parent;
-        var isVk = /[?&]vk_app_id=/.test(window.location.search);
-        if (!inFrame || isVk) return;
-        var s = document.createElement('script');
-        s.src = 'https://yandex.ru/games/sdk/v2';
-        document.head.appendChild(s);
-        // Флаг для sdk.js: тег вставлен, YaGames ЕЩЁ летит — надо его дождаться.
-        // Без флага sdk.init() не отличил бы «SDK сейчас будет» от «мы не на площадке».
-        window.__YA_SDK_PENDING__ = true;
-      })();
-    </script>
+    <!-- SDK площадки подключает src/sdk.js — сам, по факту площадки, и только когда нужен.
+         В этом файле его нет сознательно: index.html отдаётся как есть и читается глазами. -->
     <style>
       html,
       body {
@@ -61,7 +40,7 @@
         touch-action: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Cf9ZF2UU.js"></script>
+    <script type="module" crossorigin src="./assets/index-DRZYyf1E.js"></script>
   </head>
   <body>
     <div id="game"></div>
