@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Изнанка</title>
+  <link rel="icon" href="assets/favicon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* §1.6.2.7 модерации: взаимодействие с игрой не должно выделять текст/картинку
+       и подсвечивать тап (JS в main.js гасит контекстное меню, CSS — выделение). */
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #161225;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none; }
+    /* height:100vh на мобильном браузере (не в iframe площадки) считает полную высоту
+       экрана, включая место под адресную строку, ДАЖЕ КОГДА ТА СКРЫТА — низ игры (тут
+       нижние кнопки/D-pad) уезжает за видимую область. 100dvh браузер пересчитывает сам
+       при скрытии/показе адресной строки; 100vh остаётся фолбэком без поддержки dvh
+       (шаблон v18, найдено на «Мойке Мечты»). */
+    #game { width: 100vw; height: 100vh; height: 100dvh; }
+    canvas { display: block; }
+    /* Статичный лоадер поверх пустого фона: показывается СРАЗУ при открытии и держится,
+       пока грузится площадка (SDK) и создаётся Phaser. Без него первые секунды — пустой
+       тёмный экран, который читается как «игра не грузится» (и валит требование Яндекса
+       к заявке CSP «игра запускается без доступа к хостам»). main.js убирает его, когда
+       стартует Phaser и появляется своя полоса загрузки. Цвет спиннера — под тему игры. */
+    #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #161225; z-index: 10; }
+    #boot .spin { width: 52px; height: 52px; border: 5px solid #2b2144; border-top-color: #f2c14e; border-radius: 50%; animation: boot-rot 0.9s linear infinite; }
+    @keyframes boot-rot { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="boot"><div class="spin"></div></div>
+
+  <!-- Yandex Games SDK.  для разработки, build.py сам убирает его при сборке релиза.
+       Подключается УСЛОВНО: внутри VK Mini Apps (в URL есть launch-параметр vk_app_id)
+       тег не создаётся вовсе. Причина — правила VK Mini Apps п.4.2.6: в приложении не
+       должно быть упоминаний и материалов других площадок, а запрос к домену конкурента
+       из работающей мини-аппы — ровно такое упоминание, видимое в сетевой панели
+       модератора. Плюс лишние 100+ КБ и заведомо висящий YaGames.init() внутри VK.
+       document.write, а не динамический createElement: он выполняется СИНХРОННО при
+       разборе страницы и сохраняет порядок загрузки (SDK готов до src/main.js). При
+       асинхронной вставке YaGames не успевал бы определиться к моменту Platform.init(),
+       и адаптер грузил бы SDK вторым тегом. -->
+  <script>
+    if (!new URLSearchParams(location.search).has('vk_app_id')) {
+      document.write('<script src="https://yandex.ru/games/sdk/v2"><\/script>');
+    }
+  </script>
+
+  <!-- VK Bridge (VK Mini Apps = VK + ОК + Mail.ru) — локально в vendor/, не с CDN
+       (CONVENTIONS.md §15: сторонний домен режут антивирусы игроков). Безвредно вне VK:
+       адаптер зовётся только когда слой определил площадку по launch-параметрам URL. -->
+  <script src="vendor/vk-bridge.min.js"></script>
+
+  <!-- Phaser 3 лежит локально в vendor/: без внешних CDN, надёжнее на модерации -->
+  <script src="vendor/phaser.min.js"></script>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
