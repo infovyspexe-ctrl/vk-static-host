@@ -4,6 +4,7 @@ import { createButton } from './Button.js';
 import { createPanel } from './Panel.js';
 import { i18n } from '../i18n/strings.js';
 import { Input } from '../core/input.js';
+import { Platform } from '../platform/index.js';
 import { META_BRANCH_ORDER } from '../data/metaTree.js';
 import { START_KIT } from '../data/metaTree.js';
 import { buyBranch, buyStartKitLevel } from '../meta/progress.js';
@@ -30,6 +31,11 @@ export class UpgradesOverlay {
     const { width, height } = s.scale;
     this.root = s.add.container(0, 0).setDepth(300).setScrollFactor(0);
     const bg = s.add.rectangle(width / 2, height / 2, width, height, 0x0a0714, 1).setInteractive();
+    // Тап по фону тоже закрывает — ВТОРОЙ выход, независимый от геометрии кнопки
+    // «Закрыть» и от того, снялся ли sticky-баннер VK. Без него игрок, у которого
+    // баннер перекрыл кнопку, запирался в модалке: Esc в игре ни на что не подписан,
+    // а фон глотал тапы. (Блокер красной команды 11.08, п.4.2.10 + «не зависать».)
+    bg.on('pointerup', () => this.close());
     this.root.add(bg);
 
     this.title = s.add.text(width / 2, 70, i18n.t('upgradesButton'), {
@@ -54,7 +60,7 @@ export class UpgradesOverlay {
     this.kitBtn = this.btn(width / 2, kitTop + 28, '', () => this.buyKit(), { fontSize: THEME.fontSize.small });
     this.root.add(this.kitBtn);
 
-    this.closeBtn = this.btn(width / 2, height - 62, i18n.t('close'), () => this.close(),
+    this.closeBtn = this.btn(width / 2, height - 200, i18n.t('close'), () => this.close(),
       { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.small });
     this.root.add(this.closeBtn);
   }
@@ -88,12 +94,19 @@ export class UpgradesOverlay {
   open(progress) {
     this.progress = progress;
     this.root.setVisible(true);
+    // Sticky-баннер VK висит внизу ПОВЕРХ приложения и закрывал кнопку «Закрыть» этого
+    // оверлея целиком: выйти было нечем (фон глотает тапы, Esc ни на что не подписан) —
+    // игрок запирался в модалке. Блокер красной команды 11.08 (п.5.1.5.3 + п.4.2.10).
+    // Кнопка поднята выше, а баннер на время модалки снимаем — вторая, независимая
+    // защита: она работает даже если баннер площадки окажется выше расчётного.
+    Platform.ads.hideBanner();
     Input.openLayer(this.scene, 'upgrades');
     for (const it of this._navItems) Input.register(this.scene, it.obj, it.onSelect, {});
     this.refresh();
   }
 
   close() {
+    Platform.ads.showBanner(); // вернуть sticky-баннер, снятый на время модалки
     Input.closeLayer(this.scene, 'upgrades');
     this.root.setVisible(false);
     if (this.scene.refresh) this.scene.refresh();

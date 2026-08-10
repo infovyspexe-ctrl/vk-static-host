@@ -44,9 +44,24 @@
        асинхронной вставке YaGames не успевал бы определиться к моменту Platform.init(),
        и адаптер грузил бы SDK вторым тегом. -->
   <script>
-    if (!new URLSearchParams(location.search).has('vk_app_id')) {
-      document.write('<script src="https://yandex.ru/games/sdk/v2"><\/script>');
-    }
+    (function () {
+      // Вне iframe площадки SDK не нужен и только шумит: родительского окна нет, и он валит
+      // «No parent to post message» на каждом своём вызове, часть — на самоинициализации,
+      // без единого нашего вызова (шаблон v23, «Пицца-Мафия»: 22 ошибки в консоли, из них
+      // 20 — этот шум). Модератор смотрит именно в консоль.
+      var inFrame = true;
+      try { inFrame = window !== window.parent; } catch (e) { inFrame = true; } // кросс-origin parent — тоже iframe
+      if (!inFrame) return;
+      // Внутри VK Mini Apps iframe тоже есть, поэтому вторая проверка своя: правила VK
+      // (п.4.2.6) запрещают материалы других площадок, а запрос к домену конкурента из
+      // работающей мини-аппы виден модератору в сетевой панели. Плюс лишние 100+ КБ и
+      // заведомо висящий YaGames.init().
+      if (new URLSearchParams(location.search).has('vk_app_id')) return;
+      var s = document.createElement('script');
+      s.async = false; // сохранить порядок выполнения, как у обычного тега
+      s.src = 'https://yandex.ru/games/sdk/v2';
+      document.head.appendChild(s);
+    })();
   </script>
 
   <!-- VK Bridge (VK Mini Apps = VK + ОК + Mail.ru) — локально в vendor/, не с CDN

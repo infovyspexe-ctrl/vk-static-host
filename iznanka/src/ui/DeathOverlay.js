@@ -60,7 +60,10 @@ export class DeathOverlay {
     this.title.setText(i18n.t('deathTitle'));
     this.floorText.setText(i18n.t('deathFloor', { n: api.floor }));
     this.sparksText.setText(i18n.t('deathSparksEarned', { n: api.sparksEarned }));
-    this.setReviveAvailable(!!api.canRevive);
+    // Сначала гасим (реклама ещё не подтверждена площадкой), потом GameScene.openDeath
+    // включит, если ролик есть и лимит суток не израсходован — H2, красная команда 11.08.
+    this.setReviveAvailable(false);
+    this._canReviveByRules = !!api.canRevive;
 
     this.root.setVisible(true);
     Input.openLayer(this.scene, 'death');

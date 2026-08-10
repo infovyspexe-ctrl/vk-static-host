@@ -5,6 +5,10 @@ const STRINGS = {
     // Общее
     title: 'Изнанка',
     play: 'Спуститься',
+    // Отдельно от play: на карточке героя это «выбрать этого героя», а не «начать спуск».
+    // Раньше обе кнопки на экране Починка говорили «Спуститься» — две конкурирующие
+    // команды на одном экране (находка красной команды 11.08, видно на витринном кадре).
+    heroChoose: 'Выбрать',
     loading: 'Загрузка...',
     paused: 'Пауза',
     soundOn: 'Звук: вкл',
@@ -21,7 +25,10 @@ const STRINGS = {
     floorLabel: 'Этаж {n}',
     descendButton: 'В Изнанку',
     dailyButton: 'Испытание дня',
-    upgradesButton: 'Обереги',
+    // «Прокачка», а не «Обереги»: обереги — это реликвии, которые дают в подземелье
+    // (relicsButton/relicsTitle ниже), а здесь ветки характеристик героя. Одно слово
+    // на два разных экрана путало игрока и расходилось с описанием игры (11.08).
+    upgradesButton: 'Прокачка',
     achievementsButton: 'Достижения',
     recordsButton: 'Рекорды',
     recordsTitle: 'Таблица рекордов',
@@ -125,7 +132,7 @@ const STRINGS = {
     stunnedByEnemy: 'Оглушён!',
     stunnedSkip: 'Пропуск хода',
 
-    relicsButton: 'Реликвии ({n})',
+    relicsButton: 'Обереги ({n})',
     relicsTitle: 'Собранные обереги',
     relicsEmpty: 'Пока ничего не собрано — обереги появятся здесь после первого алтаря.',
 
@@ -204,6 +211,7 @@ const STRINGS = {
   en: {
     title: 'Iznanka',
     play: 'Descend',
+    heroChoose: 'Choose',
     loading: 'Loading...',
     paused: 'Paused',
     soundOn: 'Sound: on',
@@ -219,7 +227,7 @@ const STRINGS = {
     floorLabel: 'Floor {n}',
     descendButton: 'Enter Iznanka',
     dailyButton: 'Daily Trial',
-    upgradesButton: 'Wards',
+    upgradesButton: 'Upgrades',
     achievementsButton: 'Achievements',
     recordsButton: 'Records',
     recordsTitle: 'Leaderboard',

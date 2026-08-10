@@ -37,7 +37,15 @@ export function setupLifecycle(game) {
     wasGameplayActive = YA.gameplayActive; // запомнить, шёл ли геймплей
     try {
       pausedScenes = game.scene.getScenes(true); // активные сцены
-      pausedScenes.forEach(s => s.scene.pause());
+      // ПРЯМО `s.sys.pause()`, а не `s.scene.pause()` (шаблон v25, перенесено 11.08).
+      // Второй кладёт операцию в очередь менеджера сцен, и она выполняется НА СЛЕДУЮЩЕМ
+      // шаге — а к тому времени сцена уже может не работать: игрок жмёт «Играть» (start
+      // новой сцены тоже в очереди) и в тот же кадр теряется фокус; очередь исполняет
+      // сначала старт (старая сцена остановлена), потом нашу паузу — и Phaser пишет в
+      // консоль «Cannot pause non-running Scene Menu». Не поломка геймплея, а шум в
+      // консоли, но именно шум прячет настоящие ошибки, и именно в консоль смотрит
+      // модератор. Менеджер внутри делает ровно это же (SceneManager.pause → sys.pause).
+      pausedScenes.forEach(s => { if (s && s.sys && s.sys.isActive()) s.sys.pause(); });
     } catch (e) {}
     Audio.pause();
     if (wasGameplayActive) YA.gameplayStop();
@@ -48,7 +56,18 @@ export function setupLifecycle(game) {
     if (!paused) return;
     paused = false;
     overlay.style.display = 'none';
-    try { pausedScenes.forEach(s => s.scene.resume()); } catch (e) {}
+    // Возобновляем ТОЛЬКО те сцены, которые и правда стоят на паузе (шаблон v21, перенесено
+    // 11.08 — Изнанка была в списке 12 игр с этим кодом). Список снят в момент pause(), а за
+    // время рекламы сцена могла СМЕНИТЬСЯ: здесь это живой путь «этаж зачищен → полноэкранная
+    // → выход в деревню» (GameScene.maybeInterstitial + toHub). Старая сцена к моменту
+    // onClose уже остановлена, её объекты разобраны; голый resume() воскрешал её ПОВЕРХ новой:
+    // рисовать ей нечего, а ввод она забирала на себя — экран живой, кнопки не отвечают.
+    // Ровно то, что модерация называет зависанием, и что не видно при проверке через F5.
+    try {
+      pausedScenes.forEach((s) => {
+        if (s && s.sys && typeof s.sys.isPaused === 'function' && s.sys.isPaused()) s.sys.resume();
+      });
+    } catch (e) {}
     pausedScenes = [];
     Audio.resume();
     if (wasGameplayActive) YA.gameplayStart(); // только если геймплей шёл до паузы

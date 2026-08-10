@@ -99,6 +99,10 @@ export class ShrineOverlay {
   // api: { getState(), onPick(relicId), onRerollFree(), onRerollAd() }
   open(api) {
     this.api = api;
+    // Гасим ДО ответа площадки, а не после: иначе кнопка «за рекламу» успевала мелькнуть
+    // видимой на каждом алтаре, даже когда ролика нет (H2, находка красной команды 11.08).
+    // Включит обратно GameScene.openShrine, когда придёт ответ VKWebAppCheckNativeAds.
+    this.setAdRerollAvailable(false);
     // Запоминаем «до» без анимации отклика — пульс духа/здоровья должен сработать только
     // на РЕАЛЬНОЕ изменение (после Подлечиться/Переброса), не при первом открытии алтаря.
     const state = api.getState();

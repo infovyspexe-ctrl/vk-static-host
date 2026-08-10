@@ -33,6 +33,11 @@ export class RecordsOverlay {
     this.height = height;
     this.root = s.add.container(0, 0).setDepth(300).setScrollFactor(0);
     const bg = s.add.rectangle(width / 2, height / 2, width, height, 0x0a0714, 1).setInteractive();
+    // Тап по фону тоже закрывает — ВТОРОЙ выход, независимый от геометрии кнопки
+    // «Закрыть» и от того, снялся ли sticky-баннер VK. Без него игрок, у которого
+    // баннер перекрыл кнопку, запирался в модалке: Esc в игре ни на что не подписан,
+    // а фон глотал тапы. (Блокер красной команды 11.08, п.4.2.10 + «не зависать».)
+    bg.on('pointerup', () => this.close());
     this.root.add(bg);
 
     this.title = s.add.text(width / 2, 56, i18n.t('recordsTitle'), {
@@ -49,7 +54,7 @@ export class RecordsOverlay {
     this.rowsLayer = s.add.container(0, 0);
     this.root.add(this.rowsLayer);
 
-    this.closeBtn = this.btn(width / 2, height - 56, i18n.t('close'), () => this.close(),
+    this.closeBtn = this.btn(width / 2, height - 200, i18n.t('close'), () => this.close(),
       { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.small });
     this.root.add(this.closeBtn);
   }
@@ -63,12 +68,19 @@ export class RecordsOverlay {
   open({ bestDepth = 0, todayDepth = 0, streak = 0 } = {}) {
     this.local = { bestDepth, todayDepth, streak };
     this.root.setVisible(true);
+    // Sticky-баннер VK висит внизу ПОВЕРХ приложения и закрывал кнопку «Закрыть» этого
+    // оверлея целиком: выйти было нечем (фон глотает тапы, Esc ни на что не подписан) —
+    // игрок запирался в модалке. Блокер красной команды 11.08 (п.5.1.5.3 + п.4.2.10).
+    // Кнопка поднята выше, а баннер на время модалки снимаем — вторая, независимая
+    // защита: она работает даже если баннер площадки окажется выше расчётного.
+    Platform.ads.hideBanner();
     Input.openLayer(this.scene, 'records');
     for (const it of this._navItems) Input.register(this.scene, it.obj, it.onSelect, {});
     this.load();
   }
 
   close() {
+    Platform.ads.showBanner(); // вернуть sticky-баннер, снятый на время модалки
     Input.closeLayer(this.scene, 'records');
     this.root.setVisible(false);
   }

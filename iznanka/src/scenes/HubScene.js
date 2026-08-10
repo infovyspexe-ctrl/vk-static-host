@@ -159,7 +159,7 @@ export class HubScene extends Phaser.Scene {
       card.circle.fillColor = unlocked ? THEME.colors.primary : THEME.colors.neutral;
       card.circle.setStrokeStyle(selected ? 4 : 0, THEME.colors.accent);
       card.actionBtn.setLabel(unlocked
-        ? (selected ? '✓' : i18n.t('play'))
+        ? (selected ? '✓' : i18n.t('heroChoose'))
         : i18n.t('heroLocked', { cost: HEROES[card.heroId].unlockCost }));
       card.actionBtn.setAlpha(unlocked || this.progress.sparks >= HEROES[card.heroId].unlockCost ? 1 : 0.55);
     }

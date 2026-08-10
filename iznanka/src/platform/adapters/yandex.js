@@ -27,6 +27,18 @@ function loadYandexSdk(timeoutMs = 5000) {
     s.src = 'https://yandex.ru/games/sdk/v2' + (draftFlag ? '?draft=' + draftFlag : '');
     s.onload = () => done(true);
     s.onerror = () => done(false);
+
+    // Тег SDK мог быть уже вставлен из index.html и ЕЩЁ ГРУЗИТЬСЯ: YaGames тогда пока
+    // undefined, но добавлять второй тег нельзя — это вторая инициализация SDK на одной
+    // странице. Ждём тот, что уже в полёте. (Шаблон v23, перенесено 11.08 вместе с
+    // условной вставкой тега в index.html — без этой пары условная вставка как раз и
+    // приводила бы ко второму тегу.)
+    const pending = document.querySelector('script[src^="https://yandex.ru/games/sdk/v2"]');
+    if (pending) {
+      pending.addEventListener('load', () => done(true));
+      pending.addEventListener('error', () => done(false));
+      return;
+    }
     document.head.appendChild(s);
   });
 }
@@ -52,6 +64,15 @@ export const YandexAdapter = {
 
   async init() {
     try { this.looksLikePlatform = window !== window.parent; } catch (e) { this.looksLikePlatform = true; } // кросс-origin доступ к parent бросает — тоже iframe
+    // Вне iframe площадки нет ни при каком раскладе: Яндекс, VK и GamePush всегда открывают
+    // игру во фрейме. Раньше SDK грузился и здесь, не находил родителя и валил два десятка
+    // «No parent to post message», за которыми не видно настоящих ошибок игры (шаблон v23,
+    // перенесено 11.08 — парная половина к условной вставке тега в index.html: без неё
+    // адаптер догружал SDK сам и вся экономия пропадала).
+    if (!this.looksLikePlatform) {
+      console.info('[platform:yandex] не в iframe площадки — локальный режим, SDK не гружу');
+      return;
+    }
     if (typeof YaGames === 'undefined') await loadYandexSdk();
     if (typeof YaGames === 'undefined') {
       console.warn('[platform:yandex] SDK не найден, режим локальной разработки');

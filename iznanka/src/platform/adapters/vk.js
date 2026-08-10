@@ -51,10 +51,19 @@ const STORAGE_KEY = 'save'; // весь сейв одной строкой JSON 
 export const VkAdapter = {
   name: 'vk',
   available: false,
+  // «Мы ТОЧНО внутри VK» — отдельно от available. available гаснет по таймауту 3 с
+  // (медленный клиент, тормознутая сеть), но launch-параметр vk_app_id ставит сама
+  // площадка, и если он есть — игрок в VK, а не на дев-сервере. Разница критична для
+  // рекламы: подставлять заглушку с ВЫДАЧЕЙ НАГРАДЫ внутри настоящей площадки — это
+  // имитация рекламного блока (запрет п.1.16 Яндекса, п.5.1 VK). Тот же приём, что
+  // looksLikePlatform в adapters/yandex.js; в VK-адаптере его не было (блокер красной
+  // команды 11.08).
+  looksLikePlatform: false,
   storageAvailable: false, // Init может пройти вне клиента VK, а StorageGet — нет: щупаем отдельно
   bridge: null,
 
   async init() {
+    this.looksLikePlatform = launchParams().has('vk_app_id');
     await loadVkBridge();
     if (typeof window.vkBridge === 'undefined') {
       console.warn('[platform:vk] bridge не найден, режим локальной разработки');
@@ -116,7 +125,10 @@ export const VkAdapter = {
     // VK требует проверять предзагрузку рекламы (VKWebAppCheckNativeAds) до показа;
     // для rewarded это условие модерации: кнопку награды показывать только при true.
     check(a, format) {
-      if (!a.available) return Promise.resolve(true);
+      // Внутри VK без поднявшегося моста реклама НЕ доступна — иначе кнопка «за рекламу»
+      // горит, а ролика нет (нарушение H2). Вне VK (дев-сервер) отвечаем true, чтобы
+      // интерфейс можно было проверять локально.
+      if (!a.available) return Promise.resolve(!a.looksLikePlatform);
       return a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format })
         .then((res) => !!(res && res.result))
         .catch(() => false);
@@ -124,6 +136,8 @@ export const VkAdapter = {
 
     showFullscreen(a, { onOpen, onClose }) {
       if (!a.available) {
+        // Внутри настоящего VK заглушку не рисуем и не притворяемся, что показ был.
+        if (a.looksLikePlatform) { console.warn('[platform:vk] мост не поднялся — показа не будет'); onClose(false); return; }
         console.log('[platform:vk] полноэкранная (заглушка)');
         onClose(true);
         return;
@@ -142,6 +156,12 @@ export const VkAdapter = {
     // разделены).
     showRewarded(a, { onOpen, onRewarded, onClose }) {
       if (!a.available) {
+        // САМОЕ ВАЖНОЕ МЕСТО. Внутри настоящего VK награду без реального ролика выдавать
+        // НЕЛЬЗЯ: это имитация рекламного блока (п.1.16 Яндекса, п.5.1 VK) и прямой отказ.
+        // Заглушка с наградой законна только вне площадки — на дев-сервере, где vk_app_id
+        // в URL нет. (Блокер красной команды 11.08; на Яндексе этот же случай уже был
+        // закрыт фиксом шаблона v19 через looksLikePlatform.)
+        if (a.looksLikePlatform) { console.warn('[platform:vk] мост не поднялся — награда не выдаётся'); onClose(false); return; }
         console.log('[platform:vk] вознаграждаемая (заглушка), выдаю награду');
         onRewarded();
         onClose(true);

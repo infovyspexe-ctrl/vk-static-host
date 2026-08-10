@@ -38,7 +38,11 @@ const GRID_LEFT = (720 - COLS * TILE) / 2;
 // срабатывал, и вместо него рекламу резал уже платформенный анти-спам Яндекса
 // ("Fullscreen ad skipped: too frequent requests") — ролик молча пропадал, хоть игра
 // и не ломалась (onError в адаптере честно зовёт onClose(false)).
-let lastAdAt = 0;
+// Засеяно временем ЗАГРУЗКИ, а не нулём. С нулём первый показ разрешён сразу: игрок,
+// вернувшийся в незаконченный забег (resumeRun) и вышедший в деревню, ловил межстраничную
+// через несколько секунд после запуска приложения — прямое «не при запуске» п.5.1.5.1 VK
+// (находка красной команды 11.08).
+let lastAdAt = Date.now();
 
 function monsterDefOf(id) { return MONSTERS[id] || BOSSES[id]; }
 
@@ -185,11 +189,16 @@ export class GameScene extends Phaser.Scene {
 
     const heroDef = HEROES[this.heroId];
     this.skillBtns = heroDef.skills.map((skill, i) =>
-      createButton(this, 560, 1060 + i * 88, i18n.t('skill_' + skill.id), () => this.onSkill(i),
+      createButton(this, 560, 1052 + i * 88, i18n.t('skill_' + skill.id), () => this.onSkill(i),
         { color: THEME.colors.primary, fontSize: '20px' })
     );
 
-    this.waitBtn = createButton(this, 560, 1240, i18n.t('waitButton'), () => this.onWait(),
+    // y=1220, а не 1240: при 1240 нижний край кнопки (высота = текст + paddingY*2 ≈ 62)
+    // приходился на 1271 из 1280 — девять пикселей до кромки канваса. На мобильном клиенте
+    // это ~4 CSS px, и кнопка вплотную к жест-бару/кромке фрейма (п.3.2.2 VK про safe zone,
+    // находка красной команды 11.08). Замер: 1220 → низ 1251, зазор до соседней кнопки
+    // умения сверху 18 px (п.3.3.2 «кнопки на комфортном расстоянии»).
+    this.waitBtn = createButton(this, 560, 1220, i18n.t('waitButton'), () => this.onWait(),
       { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: '20px' });
   }
 
@@ -527,10 +536,17 @@ export class GameScene extends Phaser.Scene {
     if (this.state.floor <= 1) { if (onDone) onDone(); return; } // не на обучающем этаже
     const now = Date.now();
     if (now - lastAdAt < BALANCE.ads.interstitialMinGapSec * 1000) { if (onDone) onDone(); return; }
-    lastAdAt = now;
-    showAdCountdown(this, () => {
-      Analytics.event(EVENTS.AD_INTERSTITIAL_SHOWN);
-      Platform.ads.showFullscreen({ onClose: () => { if (onDone) onDone(); } });
+    // Сначала спрашиваем площадку, есть ли ролик, и только потом крутим отсчёт: иначе
+    // игрок получал три секунды затемнения с надписью «Реклама через 3…» и пустоту, когда
+    // реклама не налилась. И кулдаун (lastAdAt) взводим только на РЕАЛЬНЫЙ показ — иначе
+    // несостоявшаяся попытка съедала следующие 2.5 минуты (находки красной команды 11.08).
+    Platform.ads.interstitialAvailable().then((ok) => {
+      if (!ok) { if (onDone) onDone(); return; }
+      lastAdAt = Date.now();
+      showAdCountdown(this, () => {
+        Analytics.event(EVENTS.AD_INTERSTITIAL_SHOWN);
+        Platform.ads.showFullscreen({ onClose: () => { if (onDone) onDone(); } });
+      });
     });
   }
 
@@ -600,10 +616,12 @@ export class GameScene extends Phaser.Scene {
       },
       onBack: () => this.finishRun(sparksEarned)
     });
-    // См. комментарий в openShrine: кнопку награды гасим, если ролика нет (H2, правила VK).
+    // Кнопка «Второе дыхание» открывается ТОЛЬКО когда сошлось двое: правила игры (бонус
+    // раз в сутки) и реальная предзагрузка ролика у площадки (H2, правила VK). Оверлей
+    // открылся с погашенной кнопкой — включаем, когда придёт ответ.
     if (canUseRevive(this.progress)) {
       Platform.ads.rewardedAvailable().then((ok) => {
-        if (this.death.visible && !ok) this.death.setReviveAvailable(false);
+        if (this.death.visible && ok) this.death.setReviveAvailable(true);
       });
     }
   }

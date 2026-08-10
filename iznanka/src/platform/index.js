@@ -53,6 +53,43 @@ const SAVE_VERSION = 1;
 // Миграция из версии N в N+1. Пример: 1: (d) => { d.gems = 0; return d; },
 const MIGRATIONS = {};
 
+// СТОРОЖ ЗАВИСШЕЙ РЕКЛАМЫ (шаблон v22, перенесено сюда 2026-08-11 при подготовке к VK).
+// Показ ставит игру на паузу в onOpen и снимает в onClose. Если площадка не позвала НИ
+// onClose, НИ onError — пауза не снимется НИКОГДА: картинка живая, таймеры стоят, кнопки
+// не отвечают, выхода нет. Это не теория: SDK Яндекса роняет свой внутренний промис
+// («No parent to post message») уже ПОСЛЕ onOpen и наши колбэки не зовёт вовсе (поймано
+// живым прогоном «Сладкой Империи» 09.08). У VK тот же класс риска: `bridge.send` —
+// промис, который вне настоящего клиента может не разрешиться совсем.
+// 45 с заведомо больше любого честного ролика, поверх реального показа сторож не сработает.
+// Заодно единая точка защищает от ДВОЙНОГО onClose (часть площадок зовёт его и на
+// закрытие, и на ошибку — второй вызов слал лишний game:resume и лишний gameplayStart).
+const AD_WATCHDOG_MS = 45000;
+
+function adFlow(onClose) {
+  const wasPlaying = Platform.gameplayActive;
+  let done = false;
+  let watchdog = null;
+  const finish = (result) => {
+    if (done) return;
+    done = true;
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+    bus.emit('game:resume');
+    if (wasPlaying) Platform.gameplayStart();
+    if (onClose) onClose(result);
+  };
+  return {
+    open: () => {
+      Platform.gameplayStop();
+      bus.emit('game:pause', { showOverlay: false });
+      watchdog = setTimeout(() => {
+        console.warn('[platform] реклама не ответила за ' + (AD_WATCHDOG_MS / 1000) + 'с — снимаем паузу принудительно');
+        finish(false);
+      }, AD_WATCHDOG_MS);
+    },
+    finish,
+  };
+}
+
 function migrate(data) {
   let v = data._v || 1;
   // Сейв ИЗ БУДУЩЕГО: игрок уже поиграл на устройстве с более новой версией игры.
@@ -122,28 +159,17 @@ export const Platform = {
   // реклама при выходе в меню), start после закрытия не вызывается.
   ads: {
     showFullscreen({ onClose } = {}) {
-      const wasPlaying = Platform.gameplayActive;
-      ADAPTER.ads.showFullscreen(ADAPTER, {
-        onOpen: () => { Platform.gameplayStop(); bus.emit('game:pause', { showOverlay: false }); },
-        onClose: (wasShown) => {
-          bus.emit('game:resume');
-          if (wasPlaying) Platform.gameplayStart();
-          if (onClose) onClose(wasShown);
-        },
-      });
+      const flow = adFlow(onClose);
+      ADAPTER.ads.showFullscreen(ADAPTER, { onOpen: flow.open, onClose: flow.finish });
     },
 
     // Награду выдавать ТОЛЬКО в onRewarded.
     showRewarded({ onRewarded, onClose } = {}) {
-      const wasPlaying = Platform.gameplayActive;
+      const flow = adFlow(onClose);
       ADAPTER.ads.showRewarded(ADAPTER, {
-        onOpen: () => { Platform.gameplayStop(); bus.emit('game:pause', { showOverlay: false }); },
+        onOpen: flow.open,
         onRewarded: () => { if (onRewarded) onRewarded(); },
-        onClose: (rewarded) => {
-          bus.emit('game:resume');
-          if (wasPlaying) Platform.gameplayStart();
-          if (onClose) onClose(rewarded);
-        },
+        onClose: flow.finish,
       });
     },
 
@@ -155,6 +181,15 @@ export const Platform = {
     async rewardedAvailable() {
       if (!ADAPTER.ads.check) return true;
       try { return await ADAPTER.ads.check(ADAPTER, 'reward'); } catch (e) { return true; }
+    },
+
+    // То же для полноэкранной. Нужно ДО обратного отсчёта: без этой проверки игрок видел
+    // «Реклама через 3…2…1», затемнение — и пустоту, если ролик не налился (в тестовом
+    // приложении VK это обычное дело). Элемент интерфейса без результата — риск по
+    // качеству (находка красной команды 11.08).
+    async interstitialAvailable() {
+      if (!ADAPTER.ads.check) return true;
+      try { return await ADAPTER.ads.check(ADAPTER, 'interstitial'); } catch (e) { return true; }
     },
 
     showBanner() { return ADAPTER.ads.showBanner(ADAPTER); },

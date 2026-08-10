@@ -35,6 +35,18 @@ export const Analytics = {
       console.warn('[Analytics] localhost — события только в консоль');
       return;
     }
+    // Внутри VK Mini Apps счётчик НЕ поднимаем. Причины две, и обе весомее аналитики:
+    // (1) правила VK (п.4.2.6) запрещают материалы других площадок, а `mc.yandex.ru` в
+    // сетевой панели модератора — ровно такой след; тег игрового SDK мы уже гасим в
+    // index.html, и оставлять при этом счётчик — половинчатая защита;
+    // (2) в watch-запрос уходит page-url ЦЕЛИКОМ, вместе с launch-параметрами запуска
+    // мини-аппы (vk_app_id, vk_user_id, sign) — то есть данные запуска уезжают третьей
+    // стороне. Статистику по VK смотрим в самой панели VK.
+    // (Блокер красной команды 11.08.)
+    if (new URLSearchParams(location.search).has('vk_app_id')) {
+      console.info('[Analytics] запуск из VK — внешний счётчик не подключаю, события в консоль');
+      return;
+    }
     try { loadMetrica(counterId); ready = true; }
     catch (e) { console.warn('[Analytics] init error', e); }
   },
