@@ -48,6 +48,11 @@ async function start() {
   Analytics.init(METRICA_ID, GAME_ID); // аналитика поведения игроков
 
   const game = new Phaser.Game(config);
+  // Инстанс наружу — для отладки из консоли и для смоук-тестов площадки: скрипт
+  // publisher/vk/play-live.js проверяет РЕАЛЬНУЮ смену сцены внутри vk.ru/app<id>
+  // через game.scene.getScenes(true), и без этой строки живой тест не видит игру
+  // (11.08). Тот же приём, что window.ysdk в adapters/yandex.js.
+  window.game = game;
   // Phaser стартовал — своя полоса загрузки Preload вот-вот появится, статичный лоадер убираем.
   document.getElementById('boot')?.remove();
   Audio.attach(game);       // единый менеджер звука
