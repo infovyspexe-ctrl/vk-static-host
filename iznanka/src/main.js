@@ -1,5 +1,6 @@
 // Точка входа. Инициализирует Yandex SDK, язык, звук, автопаузу и запускает Phaser.
 import { YA } from './yandex/sdk.js';
+import { Platform } from './platform/index.js';
 import { i18n } from './i18n/strings.js';
 import { Audio } from './core/audio.js';
 import { Analytics } from './core/analytics.js';
@@ -63,6 +64,25 @@ async function start() {
   // мобильного браузера), а не размера самого окна — visualViewport.resize ловит её
   // надёжнее и заставляет Phaser пересчитать масштаб.
   window.visualViewport?.addEventListener('resize', () => game.scale.refresh());
+
+  // БЕЗОПАСНАЯ ЗОНА ПЛОЩАДКИ (п.3.2.2 VK). Клиент VK на мобильных рисует свои кнопки
+  // (✕ и «···») ПОВЕРХ окна приложения, снизу — sticky-баннер. Игра занимала всю высоту,
+  // и верхний ряд (кнопка «‹ Меню», заголовок) уезжал под полосу клиента — отказ модерации
+  // 12.08: «Верхняя часть интерфейса обрезается» (ВКонтакте Android/Mob.Web) и «Интерфейс
+  // обрезается после отрисовки баннерной рекламы» (Одноклассники).
+  // Слой отдаёт отступы в CSS-пикселях, здесь они превращаются в поля контейнера, а Phaser
+  // (Scale.FIT) пересчитывает масштаб под оставшуюся высоту. Вне VK приходят нули.
+  const gameDiv = document.getElementById('game');
+  Platform.onSafeArea(({ top = 0, bottom = 0 }) => {
+    gameDiv.style.setProperty('--safe-top', top + 'px');
+    gameDiv.style.setProperty('--safe-bottom', bottom + 'px');
+    // ОДНОГО refresh() НЕ ХВАТАЕТ: он пересчитывает масштаб по ЗАПОМНЕННОМУ размеру
+    // родителя, а мы только что поменяли его из CSS — окно при этом не менялось, событий
+    // Phaser не получил. Без getParentBounds() канвас оставался прежней высоты и вылезал
+    // за верхнюю границу (поймано замером: safe-top 56, а canvas.top = 6).
+    game.scale.getParentBounds();
+    game.scale.refresh();
+  });
 }
 
 start();

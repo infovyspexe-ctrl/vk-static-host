@@ -46,6 +46,24 @@ function launchParams() {
   catch (e) { return new URLSearchParams(); }
 }
 
+
+// БЕЗОПАСНАЯ ЗОНА КЛИЕНТА VK (п.3.2.2). На мобильных клиент рисует свои кнопки (✕ и «···»)
+// ПОВЕРХ окна приложения, снизу живёт sticky-баннер. Приложение обязано держать интерфейс
+// вне этих полос — иначе верх срезается (отказ модерации 12.08 по ВКонтакте Android/Mob.Web
+// и по Одноклассникам «после отрисовки баннерной рекламы»).
+//
+// Откуда берём числа, по убыванию надёжности:
+//   1) VKWebAppGetConfig и событие VKWebAppUpdateConfig — у нативных клиентов там insets;
+//   2) фолбэк по vk_platform: на mobile_* полоса клиента есть всегда, а insets мобильный
+//      ВЕБ (m.vk.ru) не присылает — именно на нём снят скриншот отказа.
+// Ноль вне VK: за пределами площадки функция не зовётся вовсе.
+const FALLBACK_TOP_PX = 56;   // высота полосы с ✕/«···» в клиенте VK, замер по скриншоту модератора
+
+function isMobilePlatform() {
+  const p = launchParams().get('vk_platform') || '';
+  return /^mobile/.test(p);
+}
+
 const STORAGE_KEY = 'save'; // весь сейв одной строкой JSON — как player.setData у Яндекса
 
 export const VkAdapter = {
@@ -59,11 +77,18 @@ export const VkAdapter = {
   // looksLikePlatform в adapters/yandex.js; в VK-адаптере его не было (блокер красной
   // команды 11.08).
   looksLikePlatform: false,
+  // Отступы безопасной зоны в CSS-пикселях; слой отдаёт их игре, игра ужимает канвас.
+  safeArea: { top: 0, bottom: 0 },
+  _safeCb: null,
   storageAvailable: false, // Init может пройти вне клиента VK, а StorageGet — нет: щупаем отдельно
   bridge: null,
 
   async init() {
     this.looksLikePlatform = launchParams().has('vk_app_id');
+    // Фолбэк безопасной зоны — ДО всего остального: он зависит только от launch-параметра
+    // в URL, а не от моста. Если VKWebAppInit не уложится в таймаут (медленный клиент),
+    // init() делает return — и без этой строки полоса клиента снова резала бы верх игры.
+    if (isMobilePlatform()) this._pushSafeArea({ top: FALLBACK_TOP_PX, bottom: 0 });
     await loadVkBridge();
     if (typeof window.vkBridge === 'undefined') {
       console.warn('[platform:vk] bridge не найден, режим локальной разработки');
@@ -96,6 +121,24 @@ export const VkAdapter = {
       console.warn('[platform:vk] облачное хранилище недоступно, играем на зеркале', e);
     }
 
+    // Уточняем фолбэк настоящими insets клиента, если он их отдаёт.
+    try {
+      const cfg = await this.bridge.send('VKWebAppGetConfig');
+      if (cfg && cfg.insets) this._pushSafeArea({ top: cfg.insets.top, bottom: cfg.insets.bottom });
+    } catch (e) { /* у веб-клиента метода может не быть — остаётся фолбэк */ }
+    try {
+      this.bridge.subscribe((e) => {
+        const d = (e && e.detail) || {};
+        // Конфиг/insets приходят при старте, повороте экрана и смене оформления.
+        if (/UpdateConfig|UpdateInsets/.test(d.type || '') && d.data && d.data.insets) {
+          this._pushSafeArea({ top: d.data.insets.top, bottom: d.data.insets.bottom });
+        }
+        // Баннер меняет доступную высоту окна — пересчитать раскладку надо в любом случае,
+        // даже если сами insets не поменялись (ровно жалоба модерации ОК).
+        if (/BannerAd/.test(d.type || '') && this._safeCb) this._safeCb(this.safeArea);
+      });
+    } catch (e) {}
+
     // СТРАХОВКА к настройке «Отображение» в панели VK (publisher/vk/RECIPE.md): размер
     // окна задаётся ТАМ, но панель по умолчанию ставит 911×700, и для портретной игры
     // 720×1280 это отказ модерации «у игрового поля большие отступы» (получен на «Осуши
@@ -103,6 +146,21 @@ export const VkAdapter = {
     // пропорцию 9:16 сам. Работает только в веб-версиях ВК и ОК, на мобильных клиентах
     // отклоняется — поэтому молча, без предупреждения в консоли.
     try { await this.bridge.send('VKWebAppResizeWindow', { width: 630, height: 1120 }); } catch (e) {}
+  },
+
+  // Игра подписывается на безопасную зону: колбэк зовётся сразу с текущими значениями
+  // и потом при каждом изменении (поворот экрана, появление/скрытие баннера).
+  onSafeArea(cb) {
+    this._safeCb = cb;
+    cb(this.safeArea);
+  },
+
+  _pushSafeArea(next) {
+    const top = Math.max(0, Math.round(next.top || 0));
+    const bottom = Math.max(0, Math.round(next.bottom || 0));
+    if (top === this.safeArea.top && bottom === this.safeArea.bottom) return;
+    this.safeArea = { top, bottom };
+    if (this._safeCb) this._safeCb(this.safeArea);
   },
 
   // Хранилище VK асинхронное (только через bridge.send) — синхронный Storage-подобный

@@ -73,13 +73,29 @@ export function setupLifecycle(game) {
     if (wasGameplayActive) YA.gameplayStart(); // только если геймплей шёл до паузы
   };
 
-  document.addEventListener('visibilitychange', () => (document.hidden ? pause() : (adActive || resume())));
+  // СНЯТЬ ПАУЗУ МОЖНО, ТОЛЬКО ЕСЛИ ВКЛАДКА ВИДНА И РЕКЛАМА ЗАКРЫТА.
+  //
+  // Раньше `game:resume` снимал паузу безусловно, и этого хватало, чтобы игра ожила в
+  // СКРЫТОЙ вкладке: игрок жмёт «дальше», начинается межстраничная (game:pause), уходит
+  // работать в другую вкладку — а реклама закрывается сама (или срабатывает 45-секундный
+  // сторож в platform/index.js) и шлёт game:resume. Игрок в другой вкладке, а у него
+  // играет музыка и тикает геймплей. Найдено владельцем «Пиццы-Мафии» 2026-08-12,
+  // воспроизведено в браузере: hidden=true, bus.emit('game:resume') → музыка заиграла.
+  //
+  // Признак «вкладка не видна» берём ТОЛЬКО из document.hidden. Гасить возобновление ещё
+  // и по потере фокуса нельзя: реклама сама забирает фокус, focus обратно приходит не
+  // всегда, и игра осталась бы стоять после каждого ролика — та самая заморозка, от
+  // которой заведён весь этот файл.
+  const canResume = () => !adActive && !document.hidden;
+  const maybeResume = () => { if (canResume()) resume(); };
+
+  document.addEventListener('visibilitychange', () => (document.hidden ? pause() : maybeResume()));
   window.addEventListener('blur', () => pause());
-  window.addEventListener('focus', () => { if (!adActive) resume(); });
+  window.addEventListener('focus', () => maybeResume());
 
   // Реклама ставит на паузу этими же событиями (без оверлея — экран закрыт рекламой).
   bus.on('game:pause', (opts) => { adActive = true; pause(opts || {}); });
-  bus.on('game:resume', () => { adActive = false; resume(); });
+  bus.on('game:resume', () => { adActive = false; maybeResume(); });
 
   // Сохранить накопленное перед закрытием/сменой вкладки — иначе изменения внутри
   // 2-секундного дебаунса update() (platform/index.js FLUSH_DELAY_MS) просто теряются:

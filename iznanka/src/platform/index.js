@@ -17,6 +17,7 @@ import { bus } from '../core/events.js';
 import { YandexAdapter } from './adapters/yandex.js';
 import { GamePushAdapter } from './adapters/gamepush.js';
 import { VkAdapter } from './adapters/vk.js';
+import { GameSmileAdapter, isGameSmile } from './adapters/gamesmile.js';
 
 // VK Mini Apps ВСЕГДА добавляет launch-параметры в URL при открытии (vk_app_id,
 // vk_user_id, vk_language, sign...) — надёжный признак площадки. isIframe()/isWebView()
@@ -27,13 +28,18 @@ function isVkLaunch() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ВЫБОР ПЛОЩАДКИ. VK Mini Apps определяется по launch-параметрам в URL — площадка сама
-// их проставляет, подделать снаружи (кроме тестового открытия по этому же URL) нельзя.
-// Иначе GamePush подхватывается автоматически, как только в его адаптере заполнены
+// ВЫБОР ПЛОЩАДКИ. Наш сайт (isGameSmile) проверяется ПЕРВЫМ — раньше VK и раньше Яндекса.
+// На собственном домене остаточные признаки других площадок могут ложно сработать (а Яндекс
+// как раз выбирается по остаточному принципу — по умолчанию), и увели бы игру в неработающую
+// ветку вместо нашего адаптера. VK Mini Apps определяется по launch-параметрам в URL —
+// площадка сама их проставляет, подделать снаружи (кроме тестового открытия по этому же URL)
+// нельзя. Иначе GamePush подхватывается автоматически, как только в его адаптере заполнены
 // PROJECT_ID и PUBLIC_TOKEN, — иначе работаем напрямую с Яндексом.
 // `let`, а не `const`: при сбое прослойки init() переключает адаптер на подстраховку
 // (см. ниже). Все операции читают ADAPTER в момент вызова, поэтому подмена прозрачна.
-let ADAPTER = isVkLaunch() ? VkAdapter : (GamePushAdapter.configured() ? GamePushAdapter : YandexAdapter);
+let ADAPTER = isGameSmile()
+  ? GameSmileAdapter
+  : (isVkLaunch() ? VkAdapter : (GamePushAdapter.configured() ? GamePushAdapter : YandexAdapter));
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Имя игры = имя папки в games/. ОБЯЗАТЕЛЬНО заменить при копировании шаблона:
@@ -131,6 +137,13 @@ export const Platform = {
   },
 
   ready() { ADAPTER.ready(); },
+
+  // Безопасная зона площадки (полосы клиента сверху/снизу, п.3.2.2 VK). Площадки без
+  // такого понятия (Яндекс, локальный запуск) отдают нули — игра ничего не ужимает.
+  onSafeArea(cb) {
+    if (ADAPTER.onSafeArea) ADAPTER.onSafeArea(cb);
+    else cb({ top: 0, bottom: 0 });
+  },
 
   // Идемпотентность обязательна: SDK ругается ERROR'ом на повторный start («TimeCounter is
   // already started» — живой лог 05.08), а вызывающих сторон стало много (сцены, оверлеи
