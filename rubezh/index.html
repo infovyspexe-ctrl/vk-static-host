@@ -35,12 +35,20 @@
       #game {
         width: 100%;
         height: 100%;
+        /* SAFE ZONE (п.3.2.2 правил VK: учитывать вырез и системные полосы на мобильных).
+           Раньше запас сверху получался случайно — из чёрных полос Scale.FIT. После правки
+           масштабирования 14.08 канвас занимает окно целиком, и верхний HUD («Волна N»,
+           кнопка паузы) оказался бы вплотную к вырезу. env(safe-area-inset-*) на устройствах
+           без выреза равен нулю, поэтому на десктопе и обычных экранах ничего не меняется. */
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
       }
       #game canvas {
         touch-action: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-9BCsg_-P.js"></script>
+    <script type="module" crossorigin src="./assets/index-CUmb5vwA.js"></script>
   </head>
   <body>
     <div id="game"></div>
