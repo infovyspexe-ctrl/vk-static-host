@@ -49,6 +49,9 @@
       var inFrame = true;
       try { inFrame = window !== window.parent; } catch (e) { inFrame = true; } // кросс-origin parent — тоже iframe
       if (!inFrame) return;
+      // VK Mini Apps тоже запускает игру в iframe. Launch-параметр vk_app_id надёжно
+      // отличает VK: там нельзя грузить SDK/аналитику другой площадки.
+      try { if (new URLSearchParams(location.search).has('vk_app_id')) return; } catch (e) {}
       var s = document.createElement('script');
       s.async = false; // сохранить порядок выполнения, как у обычного тега
       s.src = 'https://yandex.ru/games/sdk/v2';
