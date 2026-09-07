@@ -130,6 +130,7 @@ function adFlow(onClose) {
 
 export const Platform = {
   name: ADAPTER.name,
+  isVk: ADAPTER === VkAdapter,
   available: false,
   gameplayActive: false, // идёт ли активный геймплей — нужно паузе и рекламе
   readOnly: false,       // в облаке сейв новее нашего клиента: играем, но не пишем
@@ -310,6 +311,17 @@ export const Platform = {
     setScore(name, score) { return ADAPTER.leaderboard.setScore(ADAPTER, name, score); },
     getPlayerEntry(name) { return ADAPTER.leaderboard.getPlayerEntry(ADAPTER, name); },
     getTop(name, n = 10) { return ADAPTER.leaderboard.getTop(ADAPTER, name, n); },
+  },
+
+  // Достижения конкретной площадки необязательны: на Яндексе/VK игра
+  // продолжает выдавать собственные зарубки, а на GameSmile дополнительно
+  // сохраняет их в общем профиле игрока.
+  achievements: {
+    unlock(code) {
+      const target = ADAPTER.achievements;
+      if (!target || typeof target.unlock !== 'function') return Promise.resolve(false);
+      return Promise.resolve(target.unlock(ADAPTER, code)).catch(() => false);
+    },
   },
 };
 

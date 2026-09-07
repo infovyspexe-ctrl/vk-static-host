@@ -8,12 +8,11 @@ export const EVENTS = {
   FIRST_LAUNCH: 'first_launch',
   RETURN_DAY: 'return_day',
   TUTORIAL_STEP: 'tutorial_step',
-  PROGRESS_REACHED: 'progress_reached',
   SESSION_END: 'session_end',         // поход завершён (параметр: слава)
 
   // Воронка похода — по ней видно, где игроки сливаются
   RUN_START: 'run_start',             // { hero }
-  FLOOR_REACHED: 'floor_reached',     // { act, floor }
+  FLOOR_REACHED: 'progress_reached',  // { act, floor }
   ACT_CLEARED: 'act_cleared',         // { act }
   RUN_WIN: 'run_win',
   RUN_LOSE: 'run_lose',               // { act, floor }

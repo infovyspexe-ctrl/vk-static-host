@@ -4,6 +4,7 @@ import { YA } from '../yandex/sdk.js';
 import { THEME } from '../ui/theme.js';
 import { i18n } from '../i18n/strings.js';
 import { Progress } from '../meta/progress.js';
+import { syncAchievements } from '../meta/achievements.js';
 import { initAdGate } from '../core/ads.js';
 import { Audio } from '../core/audio.js';
 import { allImages } from '../data/assets.js';
@@ -27,6 +28,7 @@ export class PreloadScene extends Phaser.Scene {
 
   async create() {
     await Progress.load();
+    syncAchievements();
     initAdGate();
     Audio.setMuted(!!Progress.data.muted);
     YA.loadingReady();     // сообщить площадке, что игра готова к показу

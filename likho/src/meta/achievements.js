@@ -1,6 +1,7 @@
 // Выдача зарубок. Отдельно от таблицы, потому что таблица — данные, а это логика.
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { Progress } from './progress.js';
+import { Platform } from '../platform/index.js';
 
 // Что заслужено, но ещё не выдано. Возвращает список описаний.
 export function pendingUnlocks() {
@@ -16,11 +17,21 @@ export function claimUnlocks() {
   const achievements = Progress.data.achievements.concat(fresh.map((a) => a.id));
   const memory = Progress.data.memory + fresh.reduce((s, a) => s + a.memory, 0);
   Progress.put({ achievements, memory });
+  // Собственная награда игры остаётся источником истины. Площадка получает тот
+  // же стабильный id после выдачи и сохраняет его в общем профиле; отказ сети
+  // не отменяет награду и починится при следующей синхронизации сейва/страницы.
+  fresh.forEach((a) => { Platform.achievements.unlock(a.id); });
   return fresh;
 }
 
 export function isUnlocked(id) {
   return Progress.data.achievements.includes(id);
+}
+
+export function syncAchievements() {
+  (Progress.data.achievements || []).forEach((id) => {
+    Platform.achievements.unlock(id);
+  });
 }
 
 export function progressOf(a) {

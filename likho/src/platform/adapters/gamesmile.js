@@ -233,6 +233,16 @@ export const GameSmileAdapter = {
     async getPlayerEntry() { return null; },
     async getTop() { return []; },
   },
+
+  achievements: {
+    unlock(a, code) {
+      try {
+        const sdk = window.parent && window.parent.GameSmileAchievements;
+        if (sdk && typeof sdk.unlock === 'function') return sdk.unlock(code);
+      } catch (e) { /* вне своей страницы достижения площадки недоступны */ }
+      return Promise.resolve(false);
+    },
+  },
 };
 
 // Наш сайт узнаём по имени хоста. Адрес по IP оставлен намеренно: до покупки домена
