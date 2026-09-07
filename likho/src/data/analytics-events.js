@@ -12,7 +12,7 @@ export const EVENTS = {
 
   // Воронка похода — по ней видно, где игроки сливаются
   RUN_START: 'run_start',             // { hero }
-  FLOOR_REACHED: 'progress_reached',  // { act, floor }
+  PROGRESS_REACHED: 'progress_reached', // { act, floor }
   ACT_CLEARED: 'act_cleared',         // { act }
   RUN_WIN: 'run_win',
   RUN_LOSE: 'run_lose',               // { act, floor }

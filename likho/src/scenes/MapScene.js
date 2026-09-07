@@ -200,7 +200,7 @@ export class MapScene extends Phaser.Scene {
     Sounds.step();
     const pending = this.run.enterNode(node.id);
     if (!pending) return;
-    Analytics.event(EVENTS.FLOOR_REACHED, { act: this.run.state.act, floor: node.floor + 1 });
+    Analytics.event(EVENTS.PROGRESS_REACHED, { act: this.run.state.act, floor: node.floor + 1 });
     Session.saveRun();
 
     // Input.goTo, не голый scene.start(): это САМЫЙ частый клик в игре (тап по любому
