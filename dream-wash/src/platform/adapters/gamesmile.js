@@ -276,6 +276,16 @@ export const GameSmileAdapter = {
       }
     },
   },
+
+  achievements: {
+    unlock(a, code) {
+      try {
+        const sdk = window.parent && window.parent.GameSmileAchievements;
+        if (sdk && typeof sdk.unlock === 'function') return sdk.unlock(code);
+      } catch (e) { /* профиль площадки недоступен вне страницы GameSmile */ }
+      return Promise.resolve(false);
+    },
+  },
 };
 
 // Наш сайт узнаём по имени хоста. Адрес по IP оставлен намеренно: до покупки домена

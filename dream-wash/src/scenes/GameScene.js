@@ -86,6 +86,7 @@ export class GameScene extends Phaser.Scene {
       BAYS.startCount, BAYS.maxCount
     );
     this.state.badges = this.state.badges || [];
+    for (const id of this.state.badges) Platform.achievements.unlock(id);
     // Слияние по тирам на случай старого сейва без коллекции (или если TIERS.variants
     // когда-нибудь изменится длиной) — не теряем уже отмеченное, дополняем недостающее.
     const loadedCollection = this.state.collection || {};
@@ -335,10 +336,18 @@ export class GameScene extends Phaser.Scene {
     this.coinsText = this.add.text(200, 54, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.gold
     }).setOrigin(0, 0.5);
-    this.gemsIcon = this.currencyIcon(375, 54, 'icon_gem');
+    // Изумруд и бирюзовое число терялись на голубом небе (отказ модерации VK).
+    // Контрастная тёмная капсула держит индикатор читаемым на любой локации.
+    this.gemsPill = this.add.graphics();
+    this.gemsPill.fillStyle(0x20384c, 0.92);
+    this.gemsPill.fillRoundedRect(344, 27, 154, 54, 18);
+    this.gemsPill.lineStyle(2, 0xffffff, 0.65);
+    this.gemsPill.strokeRoundedRect(344, 27, 154, 54, 18);
+    this.gemsIcon = this.currencyIcon(375, 54, 'icon_gem').setDepth(1);
     this.gemsText = this.add.text(400, 54, '', {
-      fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: '#4dd0e1'
-    }).setOrigin(0, 0.5);
+      fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: '#ffffff',
+      stroke: '#102332', strokeThickness: 3
+    }).setOrigin(0, 0.5).setDepth(1);
 
     // Текстовые метки, не эмодзи: цветные emoji (динамик, монета и т.п.) непредсказуемо
     // рендерятся в Canvas 2D в зависимости от системных шрифтов площадки — поймано на
@@ -665,6 +674,7 @@ export class GameScene extends Phaser.Scene {
         this.state.badges.push(b.id);
         this.state.gems += b.gems;
         Analytics.event(EVENTS.BADGE_EARNED, { id: b.id });
+        Platform.achievements.unlock(b.id);
         this.toast(i18n.t('badge_' + b.id) + '  +' + b.gems + ' ◆');
       }
     }

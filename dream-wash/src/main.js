@@ -65,6 +65,16 @@ async function start() {
     document.getElementById('game').style.height = 'calc(100% - ' + VK_BANNER_RESERVE_PX + 'px)';
   }
 
+  // Не фиксируем игровую область в 9:16, когда контейнер площадки выше или ниже:
+  // Phaser FIT иначе центрирует canvas и оставляет заметные пустые полосы. Сохраняем
+  // единую логическую ширину 720, а высоту расширяем под фактическое соотношение
+  // контейнера. Верхний HUD и нижняя кнопка уже привязаны к краям, фон растягивается
+  // на всю логическую высоту — поэтому контент остаётся целым без деформации.
+  const gameBox = document.getElementById('game').getBoundingClientRect();
+  if (gameBox.width > 0 && gameBox.height > 0) {
+    config.scale.height = Math.round(BASE_WIDTH * gameBox.height / gameBox.width);
+  }
+
   const game = new Phaser.Game(config);
   // Phaser стартовал — своя полоса загрузки Preload вот-вот появится, статичный лоадер убираем.
   document.getElementById('boot')?.remove();

@@ -266,6 +266,15 @@ export const Platform = {
     getPlayerEntry(name) { return ADAPTER.leaderboard.getPlayerEntry(ADAPTER, name); },
     getTop(name, n = 10) { return ADAPTER.leaderboard.getTop(ADAPTER, name, n); },
   },
+
+  achievements: {
+    unlock(code) {
+      const api = ADAPTER.achievements;
+      return api && typeof api.unlock === 'function'
+        ? Promise.resolve(api.unlock(ADAPTER, code))
+        : Promise.resolve(false);
+    },
+  },
 };
 
 // ---- Локальное зеркало ------------------------------------------------------
