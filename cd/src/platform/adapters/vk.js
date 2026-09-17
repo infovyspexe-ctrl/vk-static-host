@@ -46,6 +46,15 @@ function launchParams() {
 
 const STORAGE_KEY = 'save'; // весь сейв одной строкой JSON — как player.setData у Яндекса
 
+// На iOS WebView отдельные вызовы Bridge иногда не отвечают вообще при старте. Без
+// таймаута PreloadScene навсегда остаётся на полосе загрузки, ожидая StorageGet.
+function withTimeout(promise, timeoutMs = 5000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('VK Bridge timeout')), timeoutMs)),
+  ]);
+}
+
 export const VkAdapter = {
   name: 'vk',
   available: false,
@@ -186,7 +195,7 @@ export const VkAdapter = {
 
     async read(a) {
       try {
-        const res = await a.bridge.send('VKWebAppStorageGet', { keys: [STORAGE_KEY] });
+        const res = await withTimeout(a.bridge.send('VKWebAppStorageGet', { keys: [STORAGE_KEY] }));
         const entry = res && res.keys && res.keys[0];
         if (!entry || !entry.value) return {}; // пустое значение = новый игрок, не ошибка сети
         return JSON.parse(entry.value);
@@ -198,7 +207,7 @@ export const VkAdapter = {
 
     async write(a, payload) {
       try {
-        await a.bridge.send('VKWebAppStorageSet', { key: STORAGE_KEY, value: JSON.stringify(payload) });
+        await withTimeout(a.bridge.send('VKWebAppStorageSet', { key: STORAGE_KEY, value: JSON.stringify(payload) }));
         return true;
       } catch (e) {
         console.warn('[platform:vk] StorageSet error', e);

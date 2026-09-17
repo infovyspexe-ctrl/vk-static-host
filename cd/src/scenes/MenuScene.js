@@ -603,11 +603,11 @@ export class MenuScene extends Phaser.Scene {
     panel.lineStyle(3, THEME.colors.panelBorder, 1);
     panel.strokeRoundedRect(cx - panelW / 2, cy - panelH / 2, panelW, panelH, THEME.radius);
 
-    this.add.text(cx, cy - panelH / 2 + 50, i18n.t('howTo'), {
+    const title = this.add.text(cx, cy - panelH / 2 + 50, i18n.t('howTo'), {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.big, color: THEME.colors.primaryText, fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(302).setStroke(THEME.textStroke.color, 4);
 
-    this.add.text(cx, cy, i18n.t('howToBody'), {
+    const body = this.add.text(cx, cy, i18n.t('howToBody'), {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.text,
       align: 'center', wordWrap: { width: panelW - 60 }, lineSpacing: 8
     }).setOrigin(0.5).setDepth(302);
@@ -617,7 +617,7 @@ export class MenuScene extends Phaser.Scene {
     let btn;
     const close = () => {
       Input.closeLayer(this, LAYER);
-      [overlay, panel].forEach((o) => o.destroy());
+      [overlay, panel, title, body].forEach((o) => o.destroy());
       btn.destroy();
       this._unregisterModal();
     };
