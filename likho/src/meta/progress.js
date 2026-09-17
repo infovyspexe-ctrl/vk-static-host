@@ -22,6 +22,8 @@ const DEFAULTS = {
   run: null,
   combat: null,
   seenHowto: false,
+  seenMapTutorial: false,
+  seenCombatTutorial: false,
   seenVulnTip: false,
 };
 

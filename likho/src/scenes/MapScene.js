@@ -20,6 +20,7 @@ import { NODE } from '../mechanics/deckrun/map.js';
 import { showAdCountdown } from '../ui/adCountdown.js';
 import { openDeckViewer } from '../ui/DeckViewer.js';
 import { openRelicViewer } from '../ui/RelicViewer.js';
+import { openOverlay } from '../ui/Overlay.js';
 
 const NODE_SIGN = {
   [NODE.COMBAT]: '⚔', [NODE.ELITE]: '☠', [NODE.REST]: '🔥',
@@ -55,6 +56,9 @@ export class MapScene extends Phaser.Scene {
     this.buildMap();
     this.buildHud();
     this.maybeShowInterstitial();
+    if (Progress.data.runs === 0 && !Progress.data.seenMapTutorial) {
+      this.time.delayedCall(250, () => this.showFirstRunTutorial());
+    }
   }
 
   // ---- Шапка ---------------------------------------------------------------
@@ -71,6 +75,14 @@ export class MapScene extends Phaser.Scene {
       fontFamily: THEME.fontUi, fontSize: THEME.fontSize.small, color: THEME.colors.gold,
     }).setOrigin(1, 0.5);
 
+    createButton(this, width / 2, 34, i18n.t('backToVillage'), () => {
+      Session.saveRun();
+      Input.goTo(this, 'Menu');
+    }, {
+      color: THEME.colors.neutral, textColor: THEME.colors.text,
+      fontSize: THEME.fontSize.tiny, paddingX: 14, paddingY: 8,
+    });
+
     const bar = hpBar(this, 190, 86, 300, 26);
     bar.set(s.hp, s.maxHp, 0);
 
@@ -83,6 +95,20 @@ export class MapScene extends Phaser.Scene {
     createButton(this, width - 62, 86, '✦ ' + s.relics.length, () => openRelicViewer(this, s.relics), {
       color: THEME.colors.neutral, textColor: THEME.colors.accentText,
       fontSize: THEME.fontSize.tiny, paddingX: 14, paddingY: 10,
+    });
+  }
+
+  showFirstRunTutorial() {
+    if (!this.scene.isActive()) return;
+    Progress.put({ seenMapTutorial: true });
+    Analytics.event(EVENTS.TUTORIAL_STEP, { step: 1, screen: 'map' });
+    const { width, height } = this.scale;
+    openOverlay(this, {
+      title: i18n.t('tutorialTitle'),
+      height: 430,
+      closeLabel: i18n.t('tutorialContinue'),
+      build: (api) => api.add(bodyText(this, width / 2, height / 2,
+        i18n.t('tutorialMap'), { wrap: width - 130, color: THEME.colors.text })),
     });
   }
 

@@ -5,7 +5,8 @@ import { THEME } from '../ui/theme.js';
 import { i18n } from '../i18n/strings.js';
 import { createButton } from '../ui/Button.js';
 import { createCardView, CARD_W } from '../ui/CardView.js';
-import { panel, hpBar, statusRow, popNumber, toast, statusHint, heading, STATUS_SIGN } from '../ui/widgets.js';
+import { panel, hpBar, statusRow, popNumber, toast, statusHint, heading, bodyText, STATUS_SIGN } from '../ui/widgets.js';
+import { openOverlay } from '../ui/Overlay.js';
 import { Input } from '../core/input.js';
 import { Sounds } from '../core/sounds.js';
 import { Session } from '../core/session.js';
@@ -55,6 +56,10 @@ export class CombatScene extends Phaser.Scene {
     this.buildControls();
     this.renderAll();
 
+    if (Progress.data.runs === 0 && !Progress.data.seenCombatTutorial) {
+      this.time.delayedCall(250, () => this.showFirstRunTutorial());
+    }
+
     Platform.gameplayStart();
     this.events.on('shutdown', () => Platform.gameplayStop());
   }
@@ -73,6 +78,28 @@ export class CombatScene extends Phaser.Scene {
       fontFamily: THEME.fontUi, fontSize: THEME.fontSize.small, color: THEME.colors.accentText,
     }).setOrigin(1, 0.5);
     Input.makeSelectable(this.relicText, () => openRelicViewer(this, this.combat.state.player.relics));
+
+    createButton(this, width / 2, 44, i18n.t('backToVillage'), () => {
+      Session.saveRun();
+      Input.goTo(this, 'Menu');
+    }, {
+      color: THEME.colors.neutral, textColor: THEME.colors.text,
+      fontSize: THEME.fontSize.tiny, paddingX: 12, paddingY: 8,
+    });
+  }
+
+  showFirstRunTutorial() {
+    if (!this.scene.isActive() || this.dead) return;
+    Progress.put({ seenCombatTutorial: true });
+    Analytics.event(EVENTS.TUTORIAL_STEP, { step: 2, screen: 'combat' });
+    const { width, height } = this.scale;
+    openOverlay(this, {
+      title: i18n.t('tutorialTitle'),
+      height: 470,
+      closeLabel: i18n.t('tutorialContinue'),
+      build: (api) => api.add(bodyText(this, width / 2, height / 2,
+        i18n.t('tutorialCombat'), { wrap: width - 130, color: THEME.colors.text })),
+    });
   }
 
   // ---- Враги ---------------------------------------------------------------
@@ -432,10 +459,12 @@ export class CombatScene extends Phaser.Scene {
         // не знает, сколько реально вернётся здоровья, пока не нажмёт.
         const healAmount = Math.max(1, Math.floor(this.combat.state.player.maxHp * BALANCE.SECOND_WIND_HP_PCT));
         const btn = createButton(this, width / 2, height * 0.5, i18n.t('fleeAd', { n: healAmount }), () => {
-          AdGate.spendReward('secondWind');
-          Analytics.event(EVENTS.AD_REWARD_SHOWN, { place: 'secondWind' });
+          let reviveGranted = false;
           Ads.showRewarded({
             onRewarded: () => {
+              reviveGranted = true;
+              AdGate.spendReward('secondWind');
+              Analytics.event(EVENTS.AD_REWARD_SHOWN, { place: 'secondWind' });
               this.revived = true;
               this.dead = false;
               const st = this.combat.state;
@@ -449,19 +478,20 @@ export class CombatScene extends Phaser.Scene {
               // просто убили». startPlayerTurn даёт настоящий ход — руку, Пыл, дозор, свежие
               // намерения врагов — как после обычной смены раунда.
               this.combat.startPlayerTurn();
-              // Та же причина, что в RewardScene (4890384): onRewarded площадка зовёт ДО
-              // onClose, сцена ещё на паузе от game:pause. renderAll()→renderHand() создаёт
-              // новые кликабельные карты — на паузе это и раньше ломало клики. Ждём resume.
-              const finishRevive = () => {
+            },
+            onClose: (rewarded, opened) => {
+              // Platform снимает рекламную паузу ДО onClose. Восстанавливаем интерфейс
+              // здесь, а не ждём resume сцены: прямой sys.resume() не во всех клиентах
+              // VK/ОК доставляет это событие слушателю сцены.
+              if (rewarded && reviveGranted) {
                 layer.destroy();
                 Input.closeLayer(this, 'death');
                 this.renderAll();
                 Session.saveRun();
-              };
-              if (this.sys.isActive()) finishRevive();
-              else this.sys.events.once('resume', finishRevive);
+                return;
+              }
+              if (!rewarded && !opened) toast(this, i18n.t('noEnergy'));
             },
-            onClose: (rewarded, opened) => { if (!rewarded && !opened) toast(this, i18n.t('noEnergy')); },
           });
         }, { color: THEME.colors.accent, textColor: THEME.colors.primaryText, layer: 'death' });
         layer.add(btn);

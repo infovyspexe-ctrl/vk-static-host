@@ -106,6 +106,11 @@ const STRINGS = {
     memoryGained: 'Памяти получено: {n}',
     adDoubleMemory: 'Удвоить память за рекламу',
     toMenu: 'В деревню',
+    backToVillage: '← В деревню',
+    tutorialTitle: 'Первый поход',
+    tutorialMap: 'Выбирай один из подсвеченных узлов. Значки показывают, что ждёт впереди: бой, костёр, торговец, встреча или схрон. Маршрут — часть тактики.',
+    tutorialCombat: 'Над врагом видно его следующий ход. Внизу — твои карты, слева — запас силы. Сыграй карты, затем нажми «Конец хода». Броня гасит урон, но сгорает к следующему ходу.',
+    tutorialContinue: 'Понятно',
     retry: 'Ещё поход',
     newRecord: 'Новая слава!',
 
@@ -454,6 +459,11 @@ const STRINGS = {
     memoryGained: 'Memory gained: {n}',
     adDoubleMemory: 'Double the memory for an ad',
     toMenu: 'To the village',
+    backToVillage: '← To the village',
+    tutorialTitle: 'First journey',
+    tutorialMap: 'Choose one of the highlighted nodes. The icons show what lies ahead: a fight, campfire, trader, encounter or cache. Your route is part of the strategy.',
+    tutorialCombat: 'The enemy’s next move is shown above it. Your cards are below and vigour is on the left. Play cards, then press End turn. Block absorbs damage but expires by your next turn.',
+    tutorialContinue: 'Got it',
     retry: 'One more journey',
     newRecord: 'New glory!',
 
