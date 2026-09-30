@@ -20,12 +20,6 @@ const BASE_HEIGHT = 1280;
 // 0 значит аналитика пишет события только в консоль (для локальной разработки).
 const METRICA_ID = 111178229;
 
-// Сколько CSS-пикселей снизу отдаём под sticky-баннер VK (сам баннер ~50 px, плюс
-// требуемый правилами зазор до функциональных элементов, п.5.1.5.3). Только для VK —
-// на Яндексе баннер живёт вне игрового iframe, место резервировать не нужно. Из
-// games/osushi-ozero (уже проверено модерацией VK).
-const VK_BANNER_RESERVE_PX = 72;
-
 const config = {
   type: Phaser.AUTO,
   backgroundColor: '#1d2b3a',
@@ -58,22 +52,22 @@ async function start() {
   // самодостаточными, а сторонний трекер не нужен для работы игры.
   Analytics.init(Platform.name === 'vk' ? 0 : METRICA_ID, GAME_ID);
 
-  // VK: зарезервировать место под sticky-баннер снизу ДО создания Phaser — тогда
-  // FIT-масштабирование само впишет всю сцену в оставшуюся высоту, и ни один элемент
-  // внизу (кнопка «Апгрейды») не окажется под баннером/ближе разрешённого зазора.
-  if (Platform.name === 'vk') {
-    document.getElementById('game').style.height = 'calc(100% - ' + VK_BANNER_RESERVE_PX + 'px)';
-  }
-
   // Не фиксируем игровую область в 9:16, когда контейнер площадки выше или ниже:
   // Phaser FIT иначе центрирует canvas и оставляет заметные пустые полосы. Сохраняем
   // единую логическую ширину 720, а высоту расширяем под фактическое соотношение
   // контейнера. Верхний HUD и нижняя кнопка уже привязаны к краям, фон растягивается
   // на всю логическую высоту — поэтому контент остаётся целым без деформации.
-  const gameBox = document.getElementById('game').getBoundingClientRect();
-  if (gameBox.width > 0 && gameBox.height > 0) {
-    config.scale.height = Math.round(BASE_WIDTH * gameBox.height / gameBox.width);
-  }
+  const logicalHeight = () => {
+    // #game во время resize на один кадр может наследовать промежуточный размер
+    // старого canvas. Игра занимает весь viewport, поэтому источником истины служит
+    // layout viewport, а не текущий bounding box дочернего рендера.
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    return viewportWidth > 0 && viewportHeight > 0
+      ? Math.round(BASE_WIDTH * viewportHeight / viewportWidth)
+      : BASE_HEIGHT;
+  };
+  config.scale.height = logicalHeight();
 
   const game = new Phaser.Game(config);
   // Phaser стартовал — своя полоса загрузки Preload вот-вот появится, статичный лоадер убираем.
@@ -89,13 +83,34 @@ async function start() {
   // сверху, кнопка «Апгрейды» уехала за низ). Живой Playwright-репро: ресайз окна
   // после старта сцены БЕЗ этого листенера — canvas.getBoundingClientRect() не
   // менялся вообще, ни синтетический, ни явный dispatchEvent('resize') его не будил.
-  window.addEventListener('resize', () => game.scale.refresh());
+  // VK/ОК могут изменить размер iframe уже ПОСЛЕ инициализации bridge. Одного
+  // refresh() недостаточно: он вписывает старое логическое поле и возвращает полосы.
+  // Меняем саму логическую высоту и перестраиваем активную сцену. Перед рестартом
+  // игровая сцена сохраняет прогресс, поэтому resize ничего не теряет.
+  let resizeTimer = null;
+  const resizeGame = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const nextHeight = logicalHeight();
+      if (Math.abs(nextHeight - game.scale.height) < 2) {
+        game.scale.refresh();
+        return;
+      }
+      const activeScenes = game.scene.getScenes(true);
+      for (const scene of activeScenes) {
+        if (scene.ready && typeof scene.persist === 'function') scene.persist();
+      }
+      game.scale.resize(BASE_WIDTH, nextHeight);
+      for (const scene of activeScenes) scene.scene.restart();
+    }, 180);
+  };
+  window.addEventListener('resize', resizeGame);
   // Подстраховка к 100dvh в index.html: на мобильном при скрытии/показе адресной
   // строки #game меняет реальный размер БЕЗ события window 'resize' — здесь нужен
   // именно visualViewport.resize. TEMPLATE-VERSION.md v18: низ игры (кнопка
   // «Апгрейды») уезжал за экран на телефоне.
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => game.scale.refresh());
+    window.visualViewport.addEventListener('resize', resizeGame);
   }
 }
 

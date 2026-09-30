@@ -375,7 +375,11 @@ export class GameScene extends Phaser.Scene {
 
   buildShopButton() {
     const { width, height } = this.scale;
-    this.shopBtn = createButton(this, width / 2, height - 70, i18n.t('shopBtn'), () => this.openShop(),
+    // На VK/ОК баннер площадки накладывается снизу. Не уменьшаем под него весь canvas
+    // (это создавало пустую полосу и повторный отказ за адаптацию), а поднимаем только
+    // функциональную кнопку с безопасным зазором.
+    const bottomInset = Platform.name === 'vk' ? 150 : 70;
+    this.shopBtn = createButton(this, width / 2, height - bottomInset, i18n.t('shopBtn'), () => this.openShop(),
       { fontSize: THEME.fontSize.normal });
     // Значок-точка: «в магазине есть что-то новое» (новая точка/3-й пост), без слов и без
     // блокировки — см. hasLocationNews(). Метка кнопки статична, поэтому фиксированное
