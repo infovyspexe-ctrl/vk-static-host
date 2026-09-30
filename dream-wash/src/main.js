@@ -19,6 +19,9 @@ const BASE_HEIGHT = 1280;
 // python library/tools/metrika.py create games/<игра>
 // 0 значит аналитика пишет события только в консоль (для локальной разработки).
 const METRICA_ID = 111178229;
+// Отдельный контур для общего билда VK Mini Apps (ВКонтакте + Одноклассники).
+// Не смешиваем его с трафиком версии на Яндекс Играх.
+const VK_METRICA_ID = 113226949;
 
 const config = {
   type: Phaser.AUTO,
@@ -48,9 +51,7 @@ async function start() {
   // перенесено в dream-wash только сейчас (2026-08-23, A9 release-checklist).
   const urlLang = new URLSearchParams(location.search).get('lang');
   i18n.init(urlLang || YA.getLang() || navigator.language);
-  // На VK не подгружаем счётчик другой платформы: карточка и билд должны быть
-  // самодостаточными, а сторонний трекер не нужен для работы игры.
-  Analytics.init(Platform.name === 'vk' ? 0 : METRICA_ID, GAME_ID);
+  Analytics.init(Platform.name === 'vk' ? VK_METRICA_ID : METRICA_ID, GAME_ID);
 
   // Не фиксируем игровую область в 9:16, когда контейнер площадки выше или ниже:
   // Phaser FIT иначе центрирует canvas и оставляет заметные пустые полосы. Сохраняем
