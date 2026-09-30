@@ -7,7 +7,12 @@ import { Progress } from '../meta/progress.js';
 import { syncAchievements } from '../meta/achievements.js';
 import { initAdGate } from '../core/ads.js';
 import { Audio } from '../core/audio.js';
+import { Analytics } from '../core/analytics.js';
+import { Platform } from '../platform/index.js';
+import { GAME_ID } from '../yandex/save.js';
 import { allImages } from '../data/assets.js';
+
+const METRICA_ID = 111640176;
 
 export class PreloadScene extends Phaser.Scene {
   constructor() { super('Preload'); }
@@ -27,7 +32,13 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   async create() {
+    // На iOS bridge теряет ответы при нескольких одновременных запросах. Облачный сейв
+    // читаем первым и только после его ответа запускаем стартовые события аналитики.
     await Progress.load();
+    Analytics.init(METRICA_ID, GAME_ID, {
+      platform: Platform.isVk ? 'vk' : 'yandex',
+      bridge: Platform.isVk ? window.vkBridge : null,
+    });
     syncAchievements();
     initAdGate();
     Audio.setMuted(!!Progress.data.muted);

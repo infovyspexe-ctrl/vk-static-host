@@ -3,8 +3,6 @@ import { YA } from './yandex/sdk.js';
 import { Platform } from './platform/index.js';
 import { i18n } from './i18n/strings.js';
 import { Audio } from './core/audio.js';
-import { Analytics } from './core/analytics.js';
-import { GAME_ID } from './yandex/save.js';
 import { setupLifecycle } from './core/lifecycle.js';
 import { BootScene } from './scenes/BootScene.js';
 import { PreloadScene } from './scenes/PreloadScene.js';
@@ -23,10 +21,6 @@ import { ResultScene } from './scenes/ResultScene.js';
 // и число колонок на карте урочища (4) — менять её нельзя, не пересчитав и то, и другое.
 const BASE_WIDTH = 720;
 const BASE_HEIGHT = 1280;
-
-// Номер счётчика Яндекс Метрики этой игры. Вписывает скрипт:
-// python library/tools/metrika.py create games/likho
-const METRICA_ID = 111640176;
 
 const config = {
   type: Phaser.AUTO,
@@ -55,11 +49,6 @@ async function start() {
   await YA.init();
   const urlLang = new URLSearchParams(location.search).get('lang');
   i18n.init(urlLang || YA.getLang());
-  Analytics.init(METRICA_ID, GAME_ID, {
-    platform: Platform.isVk ? 'vk' : 'yandex',
-    bridge: Platform.isVk ? window.vkBridge : null,
-  });
-
   const game = new Phaser.Game(config);
   // Ручка для смоук-теста (PLAYTEST.md). Импорт динамический и защищён catch: папку
   // `src/dev/` релизная сборка ВЫРЕЗАЕТ, и в билде на модерации этого кода нет вовсе —

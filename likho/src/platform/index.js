@@ -19,11 +19,16 @@ import { GamePushAdapter } from './adapters/gamepush.js';
 import { VkAdapter } from './adapters/vk.js';
 import { GameSmileAdapter, isGameSmile } from './adapters/gamesmile.js';
 
-// VK Mini Apps ВСЕГДА добавляет launch-параметры в URL при открытии (vk_app_id,
-// vk_user_id, vk_language, sign...) — надёжный признак площадки. isIframe()/isWebView()
-// у vk-bridge для этого не годятся: тот же признак даёт обычный iframe Яндекса.
+// На web VK/ОК добавляют launch-параметры в URL. В нативном приложении ОК на iOS
+// параметры иногда не доходят до страницы, но сам bridge уже внедрён в WebView. Если
+// смотреть только на vk_app_id, такая сессия ошибочно запускала YandexAdapter и читала
+// пустой локальный сейв вместо облачного прогресса игрока.
 function isVkLaunch() {
-  try { return new URLSearchParams(location.search).has('vk_app_id'); }
+  try {
+    if (new URLSearchParams(location.search).has('vk_app_id')) return true;
+    return !!(window.vkBridge && typeof window.vkBridge.isWebView === 'function'
+      && window.vkBridge.isWebView());
+  }
   catch (e) { return false; }
 }
 

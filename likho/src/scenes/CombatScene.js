@@ -67,19 +67,19 @@ export class CombatScene extends Phaser.Scene {
   // ---- Шапка ---------------------------------------------------------------
   buildHud() {
     const { width } = this.scale;
-    panel(this, width / 2, 44, width - 24, 76, { fill: THEME.colors.panelDark, alpha: 0.9 });
-    this.turnText = this.add.text(24, 44, '', {
+    panel(this, width / 2, 68, width - 24, 124, { fill: THEME.colors.panelDark, alpha: 0.9 });
+    this.turnText = this.add.text(24, 36, '', {
       fontFamily: THEME.fontUi, fontSize: THEME.fontSize.small, color: THEME.colors.textDim,
     }).setOrigin(0, 0.5);
     // Обереги в шапке — СЧЁТЧИКОМ, а не списком имён: к середине похода их пять-семь,
     // и строка имён наезжала на номер хода (поймано витринным скриншотом). Список
     // открывается тапом — в бою он нужен часто, чтобы вспомнить, что уже работает.
-    this.relicText = this.add.text(width - 24, 44, '', {
+    this.relicText = this.add.text(width - 24, 36, '', {
       fontFamily: THEME.fontUi, fontSize: THEME.fontSize.small, color: THEME.colors.accentText,
     }).setOrigin(1, 0.5);
     Input.makeSelectable(this.relicText, () => openRelicViewer(this, this.combat.state.player.relics));
 
-    createButton(this, width / 2, 44, i18n.t('backToVillage'), () => {
+    createButton(this, width / 2, 92, i18n.t('backToVillage'), () => {
       Session.saveRun();
       Input.goTo(this, 'Menu');
     }, {

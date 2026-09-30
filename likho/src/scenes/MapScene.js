@@ -32,7 +32,7 @@ const NODE_COLOR = {
   [NODE.BOSS]: 0xa8382f,
 };
 
-const HUD_H = 150;
+const HUD_H = 200;
 const ROW_H = 96;
 
 export class MapScene extends Phaser.Scene {
@@ -75,7 +75,7 @@ export class MapScene extends Phaser.Scene {
       fontFamily: THEME.fontUi, fontSize: THEME.fontSize.small, color: THEME.colors.gold,
     }).setOrigin(1, 0.5);
 
-    createButton(this, width / 2, 34, i18n.t('backToVillage'), () => {
+    createButton(this, width / 2, 86, i18n.t('backToVillage'), () => {
       Session.saveRun();
       Input.goTo(this, 'Menu');
     }, {
@@ -83,16 +83,16 @@ export class MapScene extends Phaser.Scene {
       fontSize: THEME.fontSize.tiny, paddingX: 14, paddingY: 8,
     });
 
-    const bar = hpBar(this, 190, 86, 300, 26);
+    const bar = hpBar(this, 190, 148, 300, 26);
     bar.set(s.hp, s.maxHp, 0);
 
-    createButton(this, width - 190, 86, i18n.t('deck') + ' (' + s.deck.length + ')', () => {
+    createButton(this, width - 190, 148, i18n.t('deck') + ' (' + s.deck.length + ')', () => {
       Analytics.first(EVENTS.DECK_OPENED);
       Analytics.event(EVENTS.DECK_OPENED);
       openDeckViewer(this, s.deck);
     }, { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.tiny, paddingX: 16, paddingY: 10 });
 
-    createButton(this, width - 62, 86, '✦ ' + s.relics.length, () => openRelicViewer(this, s.relics), {
+    createButton(this, width - 62, 148, '✦ ' + s.relics.length, () => openRelicViewer(this, s.relics), {
       color: THEME.colors.neutral, textColor: THEME.colors.accentText,
       fontSize: THEME.fontSize.tiny, paddingX: 14, paddingY: 10,
     });
