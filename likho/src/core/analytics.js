@@ -52,20 +52,8 @@ export const Analytics = {
   init(id, prefix, options = {}) {
     counterId = id || 0;
     gamePrefix = prefix || gamePrefix;
-    provider = options.platform === 'vk' ? 'vk' : 'metrika';
+    provider = 'metrika';
     vkBridge = options.bridge || window.vkBridge || null;
-    if (provider === 'vk') {
-      if (!vkBridge || typeof vkBridge.send !== 'function') {
-        provider = 'console';
-        console.warn('[Analytics] VK Bridge недоступен, события идут только в консоль');
-        return;
-      }
-      ready = true;
-      this.event('app_launch', launchAttribution());
-      this.first('first_launch', launchAttribution());
-      this.daily('return_day');
-      return;
-    }
     if (!counterId) {
       console.warn('[Analytics] счётчик не задан, события идут только в консоль');
       return;
@@ -87,12 +75,13 @@ export const Analytics = {
   // Пример: Analytics.event('wave_reached', { wave: 15 });
   event(name, params) {
     console.log('[Analytics]', name, params || '');
-    if (ready && provider === 'vk' && vkBridge) {
+    if (vkBridge && typeof vkBridge.send === 'function') {
       vkBridge.send('VKWebAppTrackEvent', {
         event_name: String(name).slice(0, 255),
         event_params: cleanParams({ game: gamePrefix, ...params }),
       }).catch((e) => console.warn('[Analytics] VK event error', e));
-    } else if (ready && window.ym) {
+    }
+    if (ready && window.ym) {
       try { window.ym(counterId, 'reachGoal', name, params || {}); } catch (e) {}
     }
   },

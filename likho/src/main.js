@@ -22,6 +22,11 @@ import { ResultScene } from './scenes/ResultScene.js';
 const BASE_WIDTH = 720;
 const BASE_HEIGHT = 1280;
 
+// Канонический номер счётчика остаётся в точке входа: его читает аналитический gate.
+// Сам запуск аналитики отложен до загрузки облачного сейва в PreloadScene (важно для iOS).
+const METRICA_ID = 111640176;
+const VK_METRICA_ID = 113225182;
+
 const config = {
   type: Phaser.AUTO,
   backgroundColor: '#16121c',

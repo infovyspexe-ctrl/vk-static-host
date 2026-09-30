@@ -13,6 +13,7 @@ import { GAME_ID } from '../yandex/save.js';
 import { allImages } from '../data/assets.js';
 
 const METRICA_ID = 111640176;
+const VK_METRICA_ID = 113225182;
 
 export class PreloadScene extends Phaser.Scene {
   constructor() { super('Preload'); }
@@ -35,7 +36,7 @@ export class PreloadScene extends Phaser.Scene {
     // На iOS bridge теряет ответы при нескольких одновременных запросах. Облачный сейв
     // читаем первым и только после его ответа запускаем стартовые события аналитики.
     await Progress.load();
-    Analytics.init(METRICA_ID, GAME_ID, {
+    Analytics.init(Platform.isVk ? VK_METRICA_ID : METRICA_ID, GAME_ID, {
       platform: Platform.isVk ? 'vk' : 'yandex',
       bridge: Platform.isVk ? window.vkBridge : null,
     });
