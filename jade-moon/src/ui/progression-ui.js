@@ -1,0 +1,49 @@
+import {NAMES,RARE,equip,replacementArt,seasonData,tasks,claimTask,buyTile,seasonPrice,seasonOverview,monthKey,dayKey,boardKey} from '../mechanics/progression.js';
+import {symbol} from './tile-art.js';
+import {readRecords,retryRecords} from '../platform/records.js';
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function createProgressUI({save,getRun,showScreen,modal,close,persist,toast,materials,daily}){
+const $=s=>document.querySelector(s);
+for(const id of ['atelier','season','records']){const el=document.createElement('section');el.id=id;el.className='screen meta-screen';el.hidden=true;$('#app').append(el);}
+function editor(){
+showScreen('atelier');$('#atelier').innerHTML=`<div class="screen-ribbon"><h2>МОЯ КОЛЛЕКЦИЯ</h2><span>${save.meta.owned.length} / 31 рисунков</span></div><div class="tile-tray">${save.meta.deck.map((k,i)=>`<button class="tile deck-slot" data-slot="${i}" aria-label="Заменить ${escape(NAMES[k])}">${symbol(k)}<small>${i+1}</small></button>`).join('')}</div><p class="meta-caption">Выбери костяшку для замены</p><div class="meta-actions"><button id="materials" class="secondary">Материалы</button><button id="album-season" class="secondary">Получить рисунки</button></div>`;
+$('#atelier').querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>choose(+b.dataset.slot));$('#materials').onclick=materials;$('#album-season').onclick=()=>season();
+}
+function choose(slot,page=0){
+const reserve=replacementArt(save);
+if(!reserve.length){
+modal(`<h2 id="dialog-title">Пока нечем заменить</h2><div class="popup-art"><div class="tile">${symbol(20)}</div></div><p>Получи рисунок за главу, из подарка или за жетоны сезона.</p><button id="find-art" class="play-button">Награды сезона</button>`,'art-popup');
+$('#find-art').onclick=()=>season();return;
+}
+page=Math.max(0,Math.min(page,Math.ceil(reserve.length/6)-1));const items=reserve.slice(page*6,page*6+6);
+modal(`<h2 id="dialog-title">Рисунки вне набора</h2><div class="choice-tiles" data-count="${items.length}">${items.map(k=>`<button class="tile" data-art="${k}" aria-label="${escape(NAMES[k])}">${symbol(k)}</button>`).join('')}</div><p class="popup-note">Снятый рисунок останется в коллекции.<br>Изменения — со следующей партии.</p>${reserve.length>6?`<div class="book-controls"><button id="art-prev" class="round gold" ${page?'':'disabled'} aria-label="Предыдущие рисунки">‹</button><span>${page+1} / ${Math.ceil(reserve.length/6)}</span><button id="art-next" class="round gold" ${(page+1)*6>=reserve.length?'disabled':''} aria-label="Следующие рисунки">›</button></div>`:''}`,'art-popup');
+$('#dialog').querySelectorAll('[data-art]').forEach(b=>b.onclick=()=>{if(!equip(save,slot,+b.dataset.art)){choose(slot);return;}persist();close();editor();toast('Набор сохранён');});if($('#art-prev'))$('#art-prev').onclick=()=>choose(slot,page-1);if($('#art-next'))$('#art-next').onclick=()=>choose(slot,page+1);
+}
+function activities(){modal(`<h2 id="dialog-title">Каждый день — награды</h2><div class="popup-art"><div class="tile">${symbol(25)}</div></div><button class="play-button" id="activity-daily">Испытание дня</button><br><button class="secondary" id="activity-season">Задания сезона</button>`);$('#activity-daily').onclick=daily;$('#activity-season').onclick=()=>season();}
+function banner(){
+const o=seasonOverview(save),id=o.next??25;
+$('#season-home').innerHTML=`<span class="season-banner-copy"><small>СЕЗОН #${o.number} · ФОНАРИ</small><strong>${o.ready?'Забери жетоны!':o.next===undefined?'Все награды сезона':o.tokens>=o.price?'Награда доступна!':'Новые костяшки'}</strong><span class="banner-count">✦ ${o.tokens}${o.next===undefined?' жетонов':' / '+o.price} <em>${o.ready?o.ready+' задан. выполнено':'Осталось дней: '+o.daysLeft}</em></span></span><span class="banner-prizes" aria-hidden="true"><span class="tile">${symbol(25)}</span><span class="tile">${symbol(id)}</span></span><span class="banner-arrow" aria-hidden="true">›</span>`;
+$('#season-home').onclick=()=>season();
+}
+function season(page=0,reward=null){
+const o=seasonOverview(save),month=o.month,data=seasonData(save),list=tasks(save),date=dayKey();
+reward=Math.max(0,Math.min(RARE.length-1,reward??Math.max(0,RARE.indexOf(o.next))));
+const id=RARE[reward],owned=save.meta.owned.includes(id),price=seasonPrice(id),art={score:6,wins:0,combo:22,vortices:21,daily:25};
+showScreen('season');$('#season').innerHTML=`<div class="screen-ribbon season-ribbon"><h2>СЕЗОН #${o.number} · ФОНАРИ</h2><span>Осталось дней: ${o.daysLeft} · ${new Intl.DateTimeFormat('ru',{month:'long',timeZone:'UTC'}).format(new Date())}</span></div><div class="season-body"><div class="quest-scroll"><div class="quest-heading"><b>Задания дня</b><span class="token-purse">✦ <b>${data.tokens}</b></span></div>${list.map(t=>{const claimed=data.claims[date+':'+t.id],ready=t.value>=t.goal;return `<div class="quest ${claimed?'quest-claimed':ready?'quest-ready':''}"><span class="tile quest-icon" aria-hidden="true">${symbol(art[t.id])}</span><div><b>${t.name}</b><small>${claimed?'Награда получена':Math.min(t.value,t.goal).toLocaleString('ru')+' / '+t.goal.toLocaleString('ru')}</small></div><button data-task="${t.id}" aria-label="${claimed?'Получено':ready?'Забрать':'Награда'}: ${t.reward} жетонов. ${t.name}" ${claimed||!ready?'disabled':''}>${claimed?'✓':`+${t.reward} ✦<small>${ready?'Забрать':'жетонов'}</small>`}</button></div>`;}).join('')}<button class="secondary quest-play" id="season-play">Играть и выполнять</button><small class="season-note">Прогресс засчитывается после победы.<br>Новые задания ежедневно в 00:00 UTC.</small></div><div class="season-reward"><span class="reward-ribbon">КОСТЯШКИ В КОЛЛЕКЦИЮ</span><div class="reward-stage"><button id="reward-prev" class="round gold" ${reward?'':'disabled'} aria-label="Предыдущая награда">‹</button><div class="tile prize-tile">${symbol(id)}<span class="prize-seal">${owned?'✓':'✦'}</span></div><button id="reward-next" class="round gold" ${reward===RARE.length-1?'disabled':''} aria-label="Следующая награда">›</button></div><b>${NAMES[id]}</b><div class="reward-dots" aria-label="Награда ${reward+1} из ${RARE.length}">${RARE.map((k,i)=>`<button data-reward="${i}" class="${i===reward?'selected':''} ${save.meta.owned.includes(k)?'owned':''}" aria-label="${NAMES[k]}" aria-pressed="${i===reward}"></button>`).join('')}</div><button id="buy-art" class="play-button" ${!owned&&data.tokens<price?'disabled':''}>${owned?'В коллекцию':price+' ✦ · Забрать'}</button><small class="reward-hint">${owned?'Рисунок уже твой — выбери его в наборе':data.tokens<price?'Ещё '+(price-data.tokens)+' жетонов до награды':'Хватит жетонов — награда твоя!'}<br>Костяшки навсегда · жетоны до конца месяца</small></div></div>`;
+$('#season').querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>{if(claimTask(save,b.dataset.task)){persist();season(0,reward);toast('+'+list.find(t=>t.id===b.dataset.task).reward+' жетонов');}});
+$('#season-play').onclick=()=>{showScreen('home');$('#play').click();};
+$('#reward-prev').onclick=()=>season(0,reward-1);$('#reward-next').onclick=()=>season(0,reward+1);
+$('#season').querySelectorAll('[data-reward]').forEach(b=>b.onclick=()=>season(0,+b.dataset.reward));
+$('#buy-art').onclick=()=>{if(owned){editor();return;}if(buyTile(save,id,month)){persist();season(0,reward);modal(`<h2 id="dialog-title">Твоя награда!</h2><div class="gift-reveal"><div class="tile">${symbol(id)}</div></div><p>${NAMES[id]}</p><p class="popup-note">Навсегда в коллекции</p><button class="play-button" id="equip-prize">Выбрать в наборе</button>`,'gift-popup');$('#equip-prize').onclick=()=>{close();editor();};}};
+}
+// Refresh an open season when the UTC day/month changes, including after a sleeping tab.
+let calendar=dayKey();setInterval(()=>{const date=dayKey();if(date!==calendar){calendar=date;banner();if(!$('#season').hidden)season();}},1000);
+let recordRequest=0;
+async function records(run=getRun()){
+const request=++recordRequest;showScreen('records');$('#records').innerHTML=`<div class="screen-ribbon"><h2>РЕКОРДЫ</h2><span>${run.daily?'Испытание '+run.daily:'Уровень '+run.level} · ${['Лёгкий','Средний','Сложный','Эксперт'][run.difficulty]}</span></div><p class="popup-note">Без подсказок, отмены и перемешивания</p><div id="record-sheet" class="record-scroll">Загружаем результаты…</div>`;
+try{try{await retryRecords(save);}catch{}persist();const data=await readRecords(run);if(request!==recordRequest)return;const key=boardKey(run),[rule,,...board]=key.split(':');const best=save.meta.records[key]||save.meta.recordArchive?.[rule+':'+board.join(':')]||0;
+$('#record-sheet').innerHTML=data.mode==='live'?`<h3>Топ-10 GameSmile</h3><small>${run.season||monthKey()}</small>${data.top.length?'<ol class="leader-list">'+data.top.slice(0,10).map(r=>`<li><span>${r.place}. ${escape(r.name)}</span><b>${r.score}</b></li>`).join('')+'</ol>':'<p>Первый рекорд ещё впереди.</p>'}<p>${data.mine?'Твоё место: '+data.mine.place+' · '+data.mine.score+' очков':'Войди в профиль GameSmile, чтобы отправлять результаты.'}</p>`:`<div class="record-emblem">♛</div><h3>${data.target===null?'Личный рекорд':'Цель топ-5 GameSmile'}</h3><strong class="record-number">${data.target??best}</strong><p>${data.target===null?'Рекорды GameSmile появятся после первых соревнований.':'Набери '+data.target+' очков или больше — получи подарок.'}</p><p>Твой лучший результат: ${best}</p>`;
+}catch{$('#record-sheet').innerHTML='<h3>Результаты пока недоступны</h3><p>Набранные очки сохранены. Повторим отправку при открытии рекордов.</p><button id="records-retry" class="secondary">Повторить</button>';$('#records-retry').onclick=()=>records(run);}
+}
+return {editor,season,activities,records,banner};
+}
