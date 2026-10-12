@@ -58,17 +58,27 @@ async function start() {
   // единую логическую ширину 720, а высоту расширяем под фактическое соотношение
   // контейнера. Верхний HUD и нижняя кнопка уже привязаны к краям, фон растягивается
   // на всю логическую высоту — поэтому контент остаётся целым без деформации.
-  const logicalHeight = () => {
+  const logicalSize = () => {
     // #game во время resize на один кадр может наследовать промежуточный размер
     // старого canvas. Игра занимает весь viewport, поэтому источником истины служит
     // layout viewport, а не текущий bounding box дочернего рендера.
     const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
-    return viewportWidth > 0 && viewportHeight > 0
-      ? Math.round(BASE_WIDTH * viewportHeight / viewportWidth)
-      : BASE_HEIGHT;
+    if (viewportWidth <= 0 || viewportHeight <= 0) {
+      return { width: BASE_WIDTH, height: BASE_HEIGHT };
+    }
+    const viewportRatio = viewportWidth / viewportHeight;
+    const baseRatio = BASE_WIDTH / BASE_HEIGHT;
+    // Портретные контейнеры получают дополнительную высоту. В широком/низком iframe
+    // m.vk расширяем логическую ширину, но никогда не сжимаем высоту ниже 1280:
+    // фиксированные вертикальные зоны HUD, постов и нижней кнопки тогда не пересекаются.
+    return viewportRatio > baseRatio
+      ? { width: Math.round(BASE_HEIGHT * viewportRatio), height: BASE_HEIGHT }
+      : { width: BASE_WIDTH, height: Math.round(BASE_WIDTH / viewportRatio) };
   };
-  config.scale.height = logicalHeight();
+  const initialSize = logicalSize();
+  config.scale.width = initialSize.width;
+  config.scale.height = initialSize.height;
 
   const game = new Phaser.Game(config);
   // Phaser стартовал — своя полоса загрузки Preload вот-вот появится, статичный лоадер убираем.
@@ -92,8 +102,8 @@ async function start() {
   const resizeGame = () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      const nextHeight = logicalHeight();
-      if (Math.abs(nextHeight - game.scale.height) < 2) {
+      const next = logicalSize();
+      if (Math.abs(next.width - game.scale.width) < 2 && Math.abs(next.height - game.scale.height) < 2) {
         game.scale.refresh();
         return;
       }
@@ -101,7 +111,7 @@ async function start() {
       for (const scene of activeScenes) {
         if (scene.ready && typeof scene.persist === 'function') scene.persist();
       }
-      game.scale.resize(BASE_WIDTH, nextHeight);
+      game.scale.resize(next.width, next.height);
       for (const scene of activeScenes) scene.scene.restart();
     }, 180);
   };

@@ -205,9 +205,14 @@ export class GameScene extends Phaser.Scene {
   bayLayout() {
     const { width } = this.scale;
     const n = this.state.baysOwned;
-    const slotW = width / n;
+    // На широком m.vk расширяется игровое поле, но сами посты не должны вслед за ним
+    // раздуваться: большой portal тогда залезает на HUD и квест. Держим интерактивную
+    // колонку шириной не более базовых 720 и центрируем её на широком фоне.
+    const playWidth = Math.min(width, 720);
+    const left = (width - playWidth) / 2;
+    const slotW = playWidth / n;
     const positions = [];
-    for (let i = 0; i < n; i++) positions.push(slotW * i + slotW / 2);
+    for (let i = 0; i < n; i++) positions.push(left + slotW * i + slotW / 2);
     return { positions, slotW };
   }
 
@@ -327,24 +332,25 @@ export class GameScene extends Phaser.Scene {
 
   buildHud() {
     const { width } = this.scale;
-    this.backBtn = createButton(this, 60, 54, '‹', () => this.exitToMenu(),
+    const left = (width - Math.min(width, 720)) / 2;
+    this.backBtn = createButton(this, left + 60, 54, '‹', () => this.exitToMenu(),
       { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.normal });
 
     // Иконки валют — картинкой, не текстовым символом: жалоба игрока «непонятно, что за
     // жёлтый кругляшок» на живом плейтесте. currencyIcon — общий хелпер ниже.
-    this.coinsIcon = this.currencyIcon(175, 54, 'icon_coin');
-    this.coinsText = this.add.text(200, 54, '', {
+    this.coinsIcon = this.currencyIcon(left + 175, 54, 'icon_coin');
+    this.coinsText = this.add.text(left + 200, 54, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.gold
     }).setOrigin(0, 0.5);
     // Изумруд и бирюзовое число терялись на голубом небе (отказ модерации VK).
     // Контрастная тёмная капсула держит индикатор читаемым на любой локации.
     this.gemsPill = this.add.graphics();
     this.gemsPill.fillStyle(0x20384c, 0.92);
-    this.gemsPill.fillRoundedRect(344, 27, 154, 54, 18);
+    this.gemsPill.fillRoundedRect(left + 344, 27, 154, 54, 18);
     this.gemsPill.lineStyle(2, 0xffffff, 0.65);
-    this.gemsPill.strokeRoundedRect(344, 27, 154, 54, 18);
-    this.gemsIcon = this.currencyIcon(375, 54, 'icon_gem').setDepth(1);
-    this.gemsText = this.add.text(400, 54, '', {
+    this.gemsPill.strokeRoundedRect(left + 344, 27, 154, 54, 18);
+    this.gemsIcon = this.currencyIcon(left + 375, 54, 'icon_gem').setDepth(1);
+    this.gemsText = this.add.text(left + 400, 54, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: '#ffffff',
       stroke: '#102332', strokeThickness: 3
     }).setOrigin(0, 0.5).setDepth(1);
@@ -354,7 +360,7 @@ export class GameScene extends Phaser.Scene {
     // смоук-тесте (монета рисовалась «тофу»-квадратом). Безопасны только простые
     // Unicode-символы из базовой плоскости (◆, ★, ●) и обычный текст через i18n.
     const soundLabel = () => (this.sound.mute ? i18n.t('soundOff') : i18n.t('soundOn'));
-    this.soundBtn = createButton(this, width - 90, 54, soundLabel(), () => {
+    this.soundBtn = createButton(this, left + 630, 54, soundLabel(), () => {
       this.sound.mute = !this.sound.mute;
       this.soundBtn.setLabel(soundLabel());
     }, { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.tiny });
@@ -366,10 +372,11 @@ export class GameScene extends Phaser.Scene {
 
   buildQuestBanner() {
     const { width } = this.scale;
-    createPanel(this, width / 2, 150, width - 80, 60);
+    const bannerWidth = Math.min(width - 80, 640);
+    createPanel(this, width / 2, 150, bannerWidth, 60);
     this.questText = this.add.text(width / 2, 150, '', {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.tiny, color: THEME.colors.text,
-      align: 'center', wordWrap: { width: width - 120 }
+      align: 'center', wordWrap: { width: bannerWidth - 40 }
     }).setOrigin(0.5);
   }
 
