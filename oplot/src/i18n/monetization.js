@@ -1,0 +1,28 @@
+export const MONETIZATION_STRINGS = {
+  ru: {
+    'ads.double': '×2 золото · реклама',
+    'ads.reinforce': '+4 дерева и лучник · реклама',
+    'ads.doubled': 'Золото удвоено',
+    'ads.reinforced': 'Подкрепление на складе',
+    'ads.unavailable': 'Видео недоступно',
+    'ads.saving': 'Сохраняем награду…',
+    'ads.saveFailed': 'Повторить сохранение',
+    'ads.wait': 'Подождите…',
+    'connection.failed': 'Не удалось загрузить прогресс. Проверьте соединение и повторите вход.',
+    'connection.retry': 'Повторить вход',
+    adCountdown: 'Реклама через {n}…',
+  },
+  en: {
+    'ads.double': '×2 gold · ad',
+    'ads.reinforce': '+4 wood & archer · ad',
+    'ads.doubled': 'Gold doubled',
+    'ads.reinforced': 'Reinforcements in stock',
+    'ads.unavailable': 'Video unavailable',
+    'ads.saving': 'Saving reward…',
+    'ads.saveFailed': 'Retry saving',
+    'ads.wait': 'Please wait…',
+    'connection.failed': 'Your progress could not be loaded. Check your connection and try again.',
+    'connection.retry': 'Try again',
+    adCountdown: 'Ad in {n}…',
+  },
+};
