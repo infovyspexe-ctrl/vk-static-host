@@ -15,6 +15,8 @@ import { createLayout, cellToScreen } from '../ui/gridLayout.js';
 import { layout } from '../ui/layout.js';
 import { THEME } from '../ui/theme.js';
 import { i18n } from '../i18n/strings.js';
+import { createButton } from '../ui/Button.js';
+import { Input } from '../core/input.js';
 import { BLOCKS } from '../data/blocks.js';
 import { UNITS, UNIT_FORMS, formFor } from '../data/units.js';
 import { FIELD } from '../data/field.js';
@@ -46,6 +48,18 @@ export class BattleScene extends Phaser.Scene {
     YA.gameplayStart(); // активный геймплей — честный сигнал площадке
     addWorldBackdrop(this, { shade: 0.28 });
     addEmberParticles(this);
+    Input.setup(this);
+    const leaveBattle = () => {
+      if (this.finished) return;
+      // Combat mutates its own copies; keep the player's original construction.
+      this.finished = true;
+      Save.update(toSave(this.progress)); Save.flush();
+      this.scene.start('Menu');
+    };
+    createButton(this, 85, 42, i18n.t('menu.back'), leaveBattle,
+      { fontSize: '23px', color: THEME.colors.neutral }).setDepth(50);
+    this.input.keyboard?.on('keydown-ESC', leaveBattle);
+    this.events.once('shutdown', () => this.input.keyboard?.off('keydown-ESC', leaveBattle));
 
     this.battleTitle=this.add.text(width / 2, height * 0.05, i18n.t('battle.title'), {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.small, color: THEME.colors.text,

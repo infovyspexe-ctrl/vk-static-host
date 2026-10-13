@@ -102,7 +102,8 @@ function adFlow(onClose) {
       bus.emit('game:pause', { showOverlay: false });
       watchdog = setTimeout(() => {
         console.warn('[platform] реклама не ответила за ' + (AD_WATCHDOG_MS / 1000) + 'с — снимаем паузу принудительно');
-        finish(false);
+        // VK has no confirmed onOpen callback: opening our pause is not an impression.
+        finish(false, Platform.name === 'vk' ? false : opened);
       }, AD_WATCHDOG_MS);
     },
     finish,
