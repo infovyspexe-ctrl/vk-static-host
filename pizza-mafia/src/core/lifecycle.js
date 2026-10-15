@@ -11,7 +11,7 @@ import { bus } from './events.js';
 import { i18n } from '../i18n/strings.js';
 import { THEME } from '../ui/theme.js';
 
-export function setupLifecycle(game) {
+export function setupLifecycle(game, { orientation = 'any' } = {}) {
   let paused = false;
   let pausedScenes = [];
   let wasGameplayActive = false;
@@ -23,6 +23,11 @@ export function setupLifecycle(game) {
   // звук и геймплей резюмились ПОД рекламой. adActive не трогается focus/blur —
   // снять паузу раньше времени может только настоящий game:resume от самой рекламы.
   let adActive = false;
+  // VK's mobile rotation prompt covers the game without hiding its document.
+  // Orientation and advertising are independent pause reasons.
+  const vkMobile = Platform.name === 'vk' &&
+    /^mobile_/.test(new URLSearchParams(location.search).get('vk_platform') || '');
+  let orientationBlocked = false;
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:100;display:none;' +
@@ -88,8 +93,17 @@ export function setupLifecycle(game) {
   // и по потере фокуса нельзя: реклама сама забирает фокус, focus обратно приходит не
   // всегда, и игра осталась бы стоять после каждого ролика — та самая заморозка, от
   // которой заведён весь этот файл.
-  const canResume = () => !adActive && !document.hidden;
+  const canResume = () => !adActive && !orientationBlocked && !document.hidden;
   const maybeResume = () => { if (canResume()) resume(); };
+  const checkOrientation = () => {
+    orientationBlocked = vkMobile && ((orientation === 'portrait' && innerWidth > innerHeight) ||
+      (orientation === 'landscape' && innerHeight > innerWidth));
+    if (orientationBlocked) pause({ showOverlay: false });
+    else maybeResume();
+  };
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', checkOrientation);
+  checkOrientation();
 
   document.addEventListener('visibilitychange', () => (document.hidden ? pause() : maybeResume()));
   window.addEventListener('blur', () => pause());

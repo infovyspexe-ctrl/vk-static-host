@@ -63,7 +63,7 @@ async function start() {
   // Phaser стартовал — своя полоса загрузки Preload вот-вот появится, статичный лоадер убираем.
   document.getElementById('boot')?.remove();
   Audio.attach(game);       // единый менеджер звука
-  setupLifecycle(game);     // автопауза при потере фокуса и рекламе
+  setupLifecycle(game, { orientation: 'portrait' });
   setupVisibleViewport(game, Platform.name);
 
   // Режим съёмки промо-роликов: `?shoot=1` открывает панель, `?shoot=1&save=<пресет>`
