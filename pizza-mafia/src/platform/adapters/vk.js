@@ -72,6 +72,8 @@ export const VkAdapter = {
   // update()) резко сокращает окно между действием игрока и реальной записью в облако,
   // раз зеркало на этой площадке подстраховать её не может.
   flushDelayMs: 300,
+  // A native ad ends on the real Bridge response, including end-card dismissal.
+  adWatchdogMs: 0,
 
   async init() {
     await loadVkBridge();
@@ -120,9 +122,13 @@ export const VkAdapter = {
     // для rewarded это условие модерации: кнопку награды показывать только при true.
     check(a, format) {
       if (!a.available) return Promise.resolve(true);
-      return a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format })
-        .then((res) => !!(res && res.result))
-        .catch(() => false);
+      return new Promise(resolve => {
+        let done = false;
+        const finish = value => { if (done) return; done = true; clearTimeout(timer); resolve(value); };
+        const timer = setTimeout(() => finish(false), 5000);
+        Promise.resolve().then(() => a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format }))
+          .then(res => finish(!!res?.result), () => finish(false));
+      });
     },
 
     showFullscreen(a, { onOpen, onClose }) {

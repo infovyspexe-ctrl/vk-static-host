@@ -118,10 +118,12 @@ function adFlow(onClose) {
       opened = true;
       Platform.gameplayStop();
       bus.emit('game:pause', { showOverlay: false });
-      watchdog = setTimeout(() => {
+      // VK end cards can wait for dismissal longer than 45s. Keep the game paused.
+      const timeoutMs = ADAPTER.adWatchdogMs ?? AD_WATCHDOG_MS;
+      if (timeoutMs > 0) watchdog = setTimeout(() => {
         console.warn('[platform] реклама не ответила за ' + (AD_WATCHDOG_MS / 1000) + 'с — снимаем паузу принудительно');
         finish(false);
-      }, AD_WATCHDOG_MS);
+      }, timeoutMs);
     },
     finish,
   };
