@@ -5,7 +5,6 @@ import { attachQASnapshot } from './core/qaSnapshot.js';
 import { i18n } from './i18n/strings.js';
 import { Audio } from './core/audio.js';
 import { Analytics } from './core/analytics.js';
-import { EVENTS } from './data/analytics-events.js';
 import { ANALYTICS_COUNTERS } from './data/analytics-config.js';
 import { GAME_ID } from './yandex/save.js';
 import { setupLifecycle } from './core/lifecycle.js';
@@ -56,10 +55,7 @@ async function start() {
   // перенесено 24.08 — в этой игре был обрыв цепочки ровно на этом месте.
   const urlLang = new URLSearchParams(location.search).get('lang');
   i18n.init(urlLang || YA.getLang() || navigator.language);
-  Analytics.init(ANALYTICS_COUNTERS[Platform.name] || METRICA_ID, GAME_ID);
-  Analytics.event(EVENTS.APP_LAUNCH, { platform: Platform.name });
-  Analytics.first(EVENTS.FIRST_LAUNCH, { platform: Platform.name });
-  Analytics.returnDay();
+  Analytics.init(ANALYTICS_COUNTERS[Platform.name] || METRICA_ID, GAME_ID, { platform: Platform.name });
 
   const game = new Phaser.Game(config);
   attachQASnapshot(game, Platform);

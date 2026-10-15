@@ -24,19 +24,21 @@ export const Analytics = {
   // Вызывается один раз в main.js: номер счётчика Метрики этой игры и GAME_ID
   // (префикс ключей localStorage для first(), см. CONVENTIONS.md, раздел 7).
   // На localhost счётчик не грузится, события идут только в консоль.
-  init(id, prefix) {
+  init(id, prefix, options = {}) {
     counterId = id || 0;
     gamePrefix = prefix || gamePrefix;
+    ready = false;
     if (!counterId) {
       console.warn('[Analytics] счётчик не задан, события идут только в консоль');
-      return;
-    }
-    if (/^(localhost|127\.|192\.168\.)/.test(location.hostname)) {
+    } else if (/^(localhost|127\.|192\.168\.)/.test(location.hostname)) {
       console.warn('[Analytics] localhost — события только в консоль');
-      return;
+    } else {
+      try { loadMetrica(counterId); ready = true; }
+      catch (e) { console.warn('[Analytics] init error', e); }
     }
-    try { loadMetrica(counterId); ready = true; }
-    catch (e) { console.warn('[Analytics] init error', e); }
+    this.event('app_launch', { platform: options.platform });
+    this.first('first_launch', { platform: options.platform });
+    this.returnDay();
   },
 
   // name — короткое латинское имя события, params — необязательный объект деталей.
