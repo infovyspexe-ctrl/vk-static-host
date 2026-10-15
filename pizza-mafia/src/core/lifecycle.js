@@ -101,9 +101,11 @@ export function setupLifecycle(game, { orientation = 'any' } = {}) {
     if (orientationBlocked) pause({ showOverlay: false });
     else maybeResume();
   };
-  window.addEventListener('resize', checkOrientation);
-  window.addEventListener('orientationchange', checkOrientation);
-  checkOrientation();
+  if (vkMobile && orientation !== 'any') {
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    checkOrientation();
+  }
 
   document.addEventListener('visibilitychange', () => (document.hidden ? pause() : maybeResume()));
   window.addEventListener('blur', () => pause());
