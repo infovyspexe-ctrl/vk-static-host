@@ -259,5 +259,6 @@ export class MenuScene extends Phaser.Scene {
       });
     }, { color: THEME.colors.accent, textColor: THEME.colors.textDark, fontSize: THEME.fontSize.small });
     layer.add(dbl);
+    layoutRow([take, dbl], px, 16);
   }
 }

@@ -130,6 +130,9 @@ export class MapScene extends Phaser.Scene {
     dim.fillStyle(0x000000, 0.78);
     dim.fillRect(0, 0, width, height);
     layer.add(dim);
+    const block = this.add.zone(width / 2, height / 2, width, height).setInteractive();
+    block.on('pointerup', () => {});
+    layer.add(block);
 
     const pw = width - 60, ph = 300;
     const px = width / 2, top = height / 2 - ph / 2;

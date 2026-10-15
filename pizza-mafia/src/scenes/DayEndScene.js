@@ -296,14 +296,19 @@ export class DayEndScene extends Phaser.Scene {
 
   // Магазин апгрейдов — по кнопке, а не поверх каждого итога.
   openShop() {
-    if (this.shopLayer) { this.shopLayer.destroy(); this.shopLayer = null; return; }
+    if (this.shopLayer) { this.closeShop(); return; }
     const { width, height } = this.scale;
     this.shopLayer = this.add.container(0, 0).setDepth(50);
+    Input.openLayer(this, 'shop');
 
     const dim = this.add.graphics();
     dim.fillStyle(0x000000, 0.8);
     dim.fillRect(0, 0, width, height);
     this.shopLayer.add(dim);
+    // Consume pointer input over the dimmed result screen as well as keyboard focus.
+    const block = this.add.zone(width / 2, height / 2, width, height).setInteractive();
+    block.on('pointerup', () => {});
+    this.shopLayer.add(block);
 
     this.shopLayer.add(this.add.text(width / 2, height * 0.16, i18n.t('shopTitle'), {
       fontFamily: THEME.fontFamily, fontSize: THEME.fontSize.normal,
@@ -315,8 +320,15 @@ export class DayEndScene extends Phaser.Scene {
     this.drawShop();
 
     this.shopLayer.add(createButton(this, width / 2, height * 0.72, i18n.t('close'),
-      () => { this.shopLayer.destroy(); this.shopLayer = null; },
+      () => this.closeShop(),
       { color: THEME.colors.neutral, textColor: THEME.colors.text, fontSize: THEME.fontSize.small }));
+  }
+
+  closeShop() {
+    if (!this.shopLayer) return;
+    Input.closeLayer(this, 'shop');
+    this.shopLayer.destroy();
+    this.shopLayer = null;
   }
 
   drawShop() {
