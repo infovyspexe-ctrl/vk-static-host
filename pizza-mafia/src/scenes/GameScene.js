@@ -516,7 +516,10 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const recipes = this.unlockedRecipes();
-    const recipe = recipes[Math.floor(Math.random() * recipes.length)];
+    // The introductory lesson has no topping step: its orders must match that recipe.
+    const recipe = this.tutorial
+      ? recipes.find((r) => r.id === 'margherita') || recipes[0]
+      : recipes[Math.floor(Math.random() * recipes.length)];
     // 60% — постоянный персонаж (с любимым заказом), 40% — случайный гость.
     //
     // ОДИН И ТОТ ЖЕ ПОСТОЯННЫЙ ГОСТЬ НЕ СТОИТ В ОЧЕРЕДИ ДВАЖДЫ. В первом районе их всего
