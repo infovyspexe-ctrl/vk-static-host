@@ -8,6 +8,7 @@ import { Analytics } from './core/analytics.js';
 import { ANALYTICS_COUNTERS } from './data/analytics-config.js';
 import { GAME_ID } from './yandex/save.js';
 import { setupLifecycle } from './core/lifecycle.js';
+import { setupVisibleViewport } from './core/visibleViewport.js';
 import { BootScene } from './scenes/BootScene.js';
 import { PreloadScene } from './scenes/PreloadScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
@@ -63,6 +64,7 @@ async function start() {
   document.getElementById('boot')?.remove();
   Audio.attach(game);       // единый менеджер звука
   setupLifecycle(game);     // автопауза при потере фокуса и рекламе
+  setupVisibleViewport(game, Platform.name);
 
   // Режим съёмки промо-роликов: `?shoot=1` открывает панель, `?shoot=1&save=<пресет>`
   // сразу подставляет состояние игры. Нужен человеку, который записывает видео, —
