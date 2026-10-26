@@ -16,6 +16,12 @@ import { BattleScene } from './scenes/BattleScene.js';
 import { ResultScene } from './scenes/ResultScene.js';
 import { Platform } from './platform/index.js';
 import { ANALYTICS_COUNTERS } from './data/analytics-config.js';
+import { setupCloudResume } from './platform/cloudResume.js';
+import { installReadableText } from './ui/readability.js';
+
+class ReadabilityPlugin extends Phaser.Plugins.ScenePlugin {
+  boot() { installReadableText(this.scene); }
+}
 
 // ОРИЕНТАЦИЯ ИГРЫ (CONVENTIONS.md, раздел 16). Альбом — жанр требует: две базы
 // бок о бок и растущее по главам поле — ось горизонтальная, портрет резал бы
@@ -35,6 +41,7 @@ const BASE_HEIGHT = ORIENTATION === 'landscape' ? 720 : 1280;
 const METRICA_ID = ANALYTICS_COUNTERS[Platform.name] || 0;
 
 const config = {
+  plugins: {scene:[{key:'oplotReadable', plugin:ReadabilityPlugin, mapping:'oplotReadable'}]},
   type: Phaser.AUTO,
   backgroundColor: '#1d2b3a',
   render: {
@@ -92,6 +99,7 @@ async function start() {
   document.getElementById('boot')?.remove();
   Audio.attach(game);       // единый менеджер звука
   setupLifecycle(game);     // автопауза при потере фокуса и рекламе
+  setupCloudResume();
 
   // Пересчёт масштаба нужен на ДВА разных случая, и одного слушателя мало
   // (шаблон v32, найдено измерением canvas.style на «Лихе»: viewport 700, холст

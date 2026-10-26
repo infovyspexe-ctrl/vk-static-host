@@ -18,7 +18,7 @@
 // - Баннер поддержан мостом, но в тесном альбомном интерфейсе Оплота не включён.
 // - Большие сохранения пишет vkStorage.js с атомарным переключением манифеста.
 
-import { readVkSave, writeVkSave } from '../vkStorage.js';
+import { readVkSave, writeVkSave, acknowledgedVkSave } from '../vkStorage.js';
 
 function withTimeout(promise, ms) {
   let timer;
@@ -177,11 +177,14 @@ export const VkAdapter = {
   },
 
   storage: {
+    acknowledged(a) { return acknowledgedVkSave(a.bridge); },
     isAvailable(a) { return a.available; },
 
     async read(a) {
       try {
-        return await readVkSave(a.bridge);
+        const value = await readVkSave(a.bridge);
+        a.saveConflict = false;
+        return value;
       } catch (e) {
         console.warn('[platform:vk] StorageGet error', e);
         return null; // null — «не смогли прочитать», слой не затрёт облако
@@ -192,6 +195,7 @@ export const VkAdapter = {
       try {
         return await writeVkSave(a.bridge, payload);
       } catch (e) {
+        if (e.code === 'VK_SAVE_CONFLICT') a.saveConflict = true;
         console.warn('[platform:vk] StorageSet error', e);
         return false;
       }

@@ -28,6 +28,8 @@ const vkParams = isVkLaunch() ? new URLSearchParams(location.search) : null;
 const MIRROR_KEY = vkParams
   ? `${GAME_ID}_vk_${vkParams.get('vk_app_id')}_${vkParams.get('vk_user_id') || 'anonymous'}_save_local`
   : GAME_ID + '_save_local';
+const MIRROR_STATE_KEY = MIRROR_KEY + '_sync';
+let cloudBaseline = null;
 const FLUSH_DELAY_MS = 2000;                // склейка частых update() в одну запись
 const nextSavedAt = (previous) => Math.max(Date.now(), (Number(previous) || 0) + 1);
 
@@ -196,8 +198,11 @@ export const Platform = {
   save: {
     // Читает облако и локальное зеркало, берёт свежайшее по savedAt.
     async load() {
+      if (Platform._dirty) await Platform.save.flush();
       const cloud = ADAPTER.storage.isAvailable(ADAPTER) ? await ADAPTER.storage.read(ADAPTER) : null;
-      const mirror = readMirror();
+      // A native WebView may deny localStorage. Keep unsent edits in memory too.
+      const memoryPending = Platform._dirty && Platform.cache !== null;
+      const mirror = memoryPending ? Platform.cache : readMirror();
 
       // null от адаптера = «прочитать не смогли» (сеть, отказ). Это НЕ новый игрок.
       // Без этой ветки первая же запись затирала бы облачный сейв пустышкой —
@@ -207,13 +212,36 @@ export const Platform = {
         console.warn('[platform] облако не прочиталось — играем на зеркале, в облако не пишем');
       }
 
-      const best = newest(cloud, mirror) || {};
+      // Device clocks are not cloud revisions. Only replay a pending mirror if
+      // its recorded base is still exactly the cloud version it was edited from.
+      let pending;
+      try { pending = JSON.parse(store()?.getItem(MIRROR_STATE_KEY) || 'null'); } catch {}
+      if (memoryPending) pending = {pending:true, base:cloudBaseline};
+      const ownAcknowledged = memoryPending && ADAPTER.storage.acknowledged?.(ADAPTER);
+      const recoverPending = Platform.name === 'vk' && cloud !== null && mirror &&
+        pending?.pending === true && (pending.base === JSON.stringify(cloud) ||
+          (ownAcknowledged && JSON.stringify(ownAcknowledged) === JSON.stringify(cloud)));
+      const best = Platform.name === 'vk'
+        ? (recoverPending ? mirror : cloud || mirror || {})
+        : newest(cloud, mirror) || {};
+      if (Platform.name === 'vk' && cloud !== null) {
+        if (mirror && pending?.pending && !recoverPending) {
+          try { store()?.setItem(MIRROR_KEY + '_conflict_backup', JSON.stringify(mirror)); } catch {}
+        }
+        cloudBaseline = JSON.stringify(cloud);
+        Platform._dirty = !!recoverPending;
+        Platform.saveConflict = false;
+      }
       const { data, fromFuture } = migrate(best);
       Platform.readOnly = fromFuture;
       if (fromFuture) {
         console.warn('[platform] сейв новее версии игры — режим только для чтения');
       }
       Platform.cache = data;
+      if (Platform.name === 'vk' && cloud !== null) writeMirror(data);
+      if (recoverPending && !Platform._timer) {
+        Platform._timer = setTimeout(() => { Platform._timer = null; Platform.save._write(); }, 3000);
+      }
       return Platform.cache;
     },
 
@@ -266,7 +294,7 @@ export const Platform = {
 
     async _write() {
       if (Platform.cache === null) return;
-      if (Platform.readOnly || Platform._loadFailed) return; // чужой прогресс не затираем
+      if (Platform.readOnly || Platform._loadFailed || Platform.saveConflict) return;
       if (Platform._writing) {
         await Platform._writing;
         if (Platform._dirty) return Platform.save._write();
@@ -285,8 +313,16 @@ export const Platform = {
             if (written === false) throw new Error('Cloud save rejected');
           }
           // Флаг снимаем только после удачной записи именно этой ревизии.
-          if (Platform._revision === revision) Platform._dirty = false;
+          if (Platform.name === 'vk') cloudBaseline = JSON.stringify(payload);
+          if (Platform._revision === revision) { Platform._dirty = false; Platform.cache = payload; }
+          writeMirror(Platform.cache);
         } catch (e) {
+          if (ADAPTER.saveConflict) {
+            Platform.saveConflict = true;
+            bus.emit('save:conflict');
+          } else if (!Platform._timer) {
+            Platform._timer = setTimeout(() => { Platform._timer = null; Platform.save._write(); }, 3000);
+          }
           console.warn('[platform] запись в облако не удалась, повторим позже', e);
         } finally {
           Platform._writing = null;
@@ -330,7 +366,10 @@ function readMirror() {
 }
 
 function writeMirror(data) {
-  try { store()?.setItem(MIRROR_KEY, JSON.stringify(data)); }
+  try {
+    store()?.setItem(MIRROR_KEY, JSON.stringify(data));
+    if (vkParams) store()?.setItem(MIRROR_STATE_KEY, JSON.stringify({base: cloudBaseline, pending: Platform._dirty}));
+  }
   catch (e) {}
 }
 

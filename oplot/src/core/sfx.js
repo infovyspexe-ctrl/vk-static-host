@@ -23,6 +23,9 @@ let ctx = null;
 let master = null;
 
 export const Sfx = {
+  paused: false,
+  pause() { this.paused = true; if (ctx) ctx.suspend().catch(() => {}); },
+  resume() { this.paused = false; if (ctx) ctx.resume().catch(() => {}); },
   // Гейт: играть ли сейчас. Игра подменяет его на своё состояние mute/пауза.
   gate: () => true,
 
@@ -43,19 +46,17 @@ export const Sfx = {
   },
 
   unlock() {
+    if (this.paused) return;
     const c = this.ctx();
     if (c && c.state === 'suspended') c.resume().catch(() => {});
   },
-
-  pause() { if (ctx?.state === 'running') ctx.suspend().catch(() => {}); },
-  resume() { if (ctx?.state === 'suspended') ctx.resume().catch(() => {}); },
 
   // Выход, к которому игра может подцепить свою музыку.
   master() { this.ctx(); return master; },
 
   // Один тон с огибающей. freq в Гц, dur в секундах, slide — сдвиг частоты к концу.
   tone(freq, dur, { type = 'sine', vol = 1, delay = 0, slide = 0 } = {}) {
-    if (!this.gate() || !this.ctx()) return;
+    if (this.paused || !this.ctx() || !this.gate()) return;
     const t0 = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -73,7 +74,7 @@ export const Sfx = {
 
   // Короткий шумовой удар: шаги, сыпучее, шлепки. Тоном такое не изобразишь.
   noise(dur, { vol = 1, delay = 0, hp = 400 } = {}) {
-    if (!this.gate() || !this.ctx()) return;
+    if (this.paused || !this.ctx() || !this.gate()) return;
     const t0 = ctx.currentTime + delay;
     const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
     const buf = ctx.createBuffer(1, n, ctx.sampleRate);

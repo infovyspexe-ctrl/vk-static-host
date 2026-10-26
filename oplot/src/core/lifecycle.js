@@ -95,7 +95,8 @@ export function setupLifecycle(game) {
   // и по потере фокуса нельзя: реклама сама забирает фокус, focus обратно приходит не
   // всегда, и игра осталась бы стоять после каждого ролика — та самая заморозка, от
   // которой заведён весь этот файл.
-  const canResume = () => !adActive && !document.hidden && !portrait();
+  let cloudSync = false;
+  const canResume = () => !adActive && !cloudSync && !document.hidden && !portrait();
   const maybeResume = () => { if (canResume()) resume(); };
 
   document.addEventListener('visibilitychange', () => (document.hidden ? pause() : maybeResume()));
@@ -109,8 +110,8 @@ export function setupLifecycle(game) {
   // Wait until Phaser has started a scene before pausing a portrait cold start.
   game.events.once('ready', checkOrientation);
   const enforceOrientation = () => {
-    if (!portrait()) return;
-    checkOrientation();
+    if (portrait()) checkOrientation();
+    if (!paused) return;
     // Async create() and queued transitions can start another scene after pause().
     for (const scene of game.scene.getScenes(true)) {
       if (!pausedScenes.includes(scene)) pausedScenes.push(scene);
@@ -124,6 +125,8 @@ export function setupLifecycle(game) {
   // Реклама ставит на паузу этими же событиями (без оверлея — экран закрыт рекламой).
   bus.on('game:pause', (opts) => { adActive = true; pause(opts || {}); });
   bus.on('game:resume', () => { adActive = false; maybeResume(); });
+  bus.on('cloud:pause', () => { cloudSync = true; pause({showOverlay:false}); });
+  bus.on('cloud:resume', () => { cloudSync = false; maybeResume(); });
 
   // Сохранить накопленное перед закрытием/сменой вкладки — иначе изменения внутри
   // дебаунса update() (platform/index.js FLUSH_DELAY_MS) просто теряются: уход со

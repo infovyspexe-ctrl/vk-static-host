@@ -17,6 +17,7 @@ import { isArsenalUnlocked, unlockLevel } from '../data/arsenal.js';
 export class UpgradeScene extends Phaser.Scene {
   constructor() { super('Upgrade'); }
   init(data) {
+    this.specializationOpen = false;
     this.progress = data.progress;
     this.selectedId = data.selectedId ?? 'archer';
     this.selectedBlockId = data.selectedBlockId ?? 'brick';
@@ -33,10 +34,9 @@ export class UpgradeScene extends Phaser.Scene {
   }
   button(x, y, label, action, enabled = true, width = 210) {
     const btn = createButton(this, x, y, label, enabled ? action : null, {
-      fontSize: '20px', paddingX: 16, paddingY: 10,
+      fontSize: '20px', paddingX: 10, paddingY: 8, maxWidth:width,
       color: enabled ? THEME.colors.primary : THEME.colors.panel,
       textColor: enabled ? THEME.colors.primaryText : THEME.colors.neutralText });
-    if (btn.width > width) btn.setScale(width / btn.width);
     btn.off('pointerover'); btn.off('pointerout');
     if (!enabled) btn.disableInteractive();
     return btn;
@@ -97,16 +97,15 @@ export class UpgradeScene extends Phaser.Scene {
       this.panel(x, 494, 430, 190);
       this.add.image(x + 47, 539, 'notebook-' + option.id).setDisplaySize(68, 68);
       this.text(x + 90, 506, i18n.t('unit.' + option.id), 22, THEME.colors.text, 323);
-      this.text(x + 90, 556, i18n.t('upgrade.effect.' + option.id), 17, THEME.colors.neutralText, 322);
       const chosen = state.branch === branch;
       const cost = state.branch ? perekovkaCost(base.cost, state) : 0;
       const enabled = !chosen && (state.branch ? cost <= this.progress.gold : ready);
       const label = chosen ? i18n.t('upgrade.chosen') : state.branch ? i18n.t('upgrade.change', { n: cost })
         : ready ? i18n.t('upgrade.choose') : i18n.t('upgrade.locked');
-      this.button(x + 215, 651, label, () => {
+      this.button(x + 215, 610, i18n.t('upgrade.details'), () => this.showSpecialization(option, label, enabled, () => {
         const result = state.branch ? payPerekovka(this.progress, baseId) : chooseBranch(this.progress, baseId, branch);
         if (result.ok) this.persistAndRefresh();
-      }, enabled, 390);
+      }), true, 390);
     }
     this.button(170, 674, i18n.t('upgrade.back'), () => this.scene.start('Build', { progress: this.progress }));
     if (guided) {
@@ -152,6 +151,25 @@ export class UpgradeScene extends Phaser.Scene {
   }
   restart(tab = this.tab) {
     this.scene.restart({ progress: this.progress, selectedId: this.selectedId, selectedBlockId: this.selectedBlockId, tab });
+  }
+  showSpecialization(option, label, enabled, choose) {
+    if (this.specializationOpen) return;
+    this.specializationOpen = true;
+    Input.openLayer(this, 'specialization');
+    const objects = [];
+    const add = object => { objects.push(object); return object.setDepth(200); };
+    add(this.add.rectangle(640, 360, 1280, 720, 0x302722, .85).setInteractive());
+    add(this.add.rectangle(640, 360, 1000, 560, 0xeee4c8));
+    add(this.add.image(250, 170, 'notebook-' + option.id).setDisplaySize(100,100));
+    add(this.text(330, 125, i18n.t('unit.' + option.id), 36, THEME.colors.text, 730));
+    add(this.text(200, 250, i18n.t('upgrade.effect.' + option.id), 32, THEME.colors.text, 880));
+    const close = () => {
+      objects.forEach(object => object.destroy());
+      Input.closeLayer(this, 'specialization');
+      this.specializationOpen = false;
+    };
+    add(this.button(390, 555, i18n.t('upgrade.back'), close, true, 300));
+    add(this.button(820, 555, label, choose, enabled, 450));
   }
   persistAndRefresh() {
     Save.update(toSave(this.progress)); Save.flush();

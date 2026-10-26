@@ -2,6 +2,7 @@
 // правила и деньги — progress, крепость врага — levelProvider (авторские уровни или
 // генерация).
 import { THEME } from '../ui/theme.js';
+import { textDialog } from '../ui/textDialog.js';
 import { layout } from '../ui/layout.js';
 import { createButton } from '../ui/Button.js';
 import { i18n } from '../i18n/strings.js';
@@ -50,6 +51,7 @@ export class BuildScene extends Phaser.Scene {
   constructor() { super('Build'); }
 
   init(data) {
+    this.briefText = null;
     this.guide = null;
     this.progress = data?.progress ?? null;
     // Phaser retains settings.data when a later start omits its data argument.
@@ -145,26 +147,31 @@ export class BuildScene extends Phaser.Scene {
     const landscape = this.L.landscape;
     const intel = enemyIntel(this.levelSpec.cells);
     this.limitText=this.add.text(width*.02,height*.18,'',{fontFamily:THEME.fontFamily,fontSize:'18px',color:THEME.colors.text,wordWrap:{width:width*.34},lineSpacing:3});
-    if(this.progress.mode==='missions')this.add.text(width*.02,height*.025,
+    if(this.progress.mode==='missions')this.briefText=this.add.text(width*.02,height*.025,
       i18n.t('mission.name.'+this.progress.level)+'\n'+i18n.t('mission.build.'+this.progress.mission.kind,{height:this.progress.mission.maxHeight})+
       (this.progress.mission.targets&&['waves','strike','ruins','supply','demolition'].includes(this.progress.mission.kind)?'\n'+i18n.t('wave.protectShort'):''),{
         fontFamily:THEME.fontFamily,fontSize:'18px',color:THEME.colors.text,wordWrap:{width:width*.34},lineSpacing:4,
       });
-    else if(this.levelSpec.briefing)this.add.text(width*.02,height*.025,
+    else if(this.levelSpec.briefing)this.briefText=this.add.text(width*.02,height*.025,
       i18n.t('briefing.'+this.levelSpec.briefing),{
         fontFamily:THEME.fontFamily,fontSize:'18px',color:THEME.colors.text,
         wordWrap:{width:width*.34},lineSpacing:4,
       });
-    else if(this.levelSpec.style)this.add.text(width*.02,height*.025,
+    else if(this.levelSpec.style)this.briefText=this.add.text(width*.02,height*.025,
       i18n.t('fort.'+this.levelSpec.style)+'\n'+(this.levelSpec.endurance>1?i18n.t('fort.sustained'):i18n.t('fort.strength',{n:this.levelSpec.strength.toFixed(2)}))+
       (this.levelSpec.tactics?'\n'+i18n.t('tactic.'+this.levelSpec.tactics.id):''),{
         fontFamily:THEME.fontFamily,fontSize:'19px',color:THEME.colors.text,wordWrap:{width:width*.34},
       });
     this.intelText=this.add.text(width * .66, height * .022,
-      i18n.t('intel.' + intel.type, { n: intel.count }) + '\n' + i18n.t('intel.tip.' + intel.type), {
+      i18n.t('intel.' + intel.type, { n: intel.count }), {
         fontFamily: THEME.fontFamily, fontSize: '18px', color: THEME.colors.text,
         wordWrap: { width: width * .32 }, lineSpacing: 5,
       });
+    this.briefing = this.briefText?.text || '';
+    this.briefText?.setText(this.briefing.split('\n')[0]);
+    createButton(this,width*.5,height*.20,i18n.t('build.help'),()=>textDialog(this,
+      [this.briefing,this.fullLimits,this.intelText.text,i18n.t('intel.tip.'+enemyIntel(this.waveSpecs[this.wavePreviewIndex].cells).type)].filter(Boolean).join('\n\n')
+    ),{fontSize:'20px',paddingX:14,paddingY:8,color:THEME.colors.neutral});
     if(this.waveSpecs.length>1){
       this.wavePreviewBtn=createButton(this,width*.81,height*.17,'',()=>this.previewWave(),{
         fontSize:'18px',paddingX:10,paddingY:7,color:THEME.colors.neutral,
@@ -242,6 +249,7 @@ export class BuildScene extends Phaser.Scene {
       if (tutorialStep(this.progress) !== 'done') return;
       this.scene.start('Blueprint', { progress: this.progress });
     }, { color: THEME.colors.neutral, textColor: THEME.colors.primaryText, fontSize: '22px', paddingX: 18, paddingY: 10 });
+    this.blueprintBtn.x=Math.max(this.blueprintBtn.x,this.blueprintBtn.width/2+10);
     this.eraseBtn = createButton(this, width * 0.32, controlsY, i18n.t('build.erase'), () => {
       if (tutorialStep(this.progress) !== 'done') return;
       this.eraseMode = !this.eraseMode;
@@ -294,7 +302,7 @@ export class BuildScene extends Phaser.Scene {
     const spec=this.waveSpecs[this.wavePreviewIndex];
     this.enemyBase=createBase({width:this.progress.width,catalog:CATALOG});applyBlueprint(this.enemyBase,spec.cells);
     const intel=enemyIntel(spec.cells);
-    this.intelText.setText(i18n.t('intel.'+intel.type,{n:intel.count})+'\n'+i18n.t('intel.tip.'+intel.type));
+    this.intelText.setText(i18n.t('intel.'+intel.type,{n:intel.count}));
     this.wavePreviewBtn.setLabel(i18n.t('wave.preview',{n:this.wavePreviewIndex+1,total:this.waveSpecs.length}));
     this.redraw();
   }
@@ -319,6 +327,8 @@ export class BuildScene extends Phaser.Scene {
     if(Number.isFinite(this.progress.mission?.maxLosses))conditions.push(i18n.t('mission.lossCap',{max:this.progress.mission.maxLosses}));
     if(this.progress.mission?.timeLimit)conditions.push(i18n.t('mission.deadline',{n:this.progress.mission.timeLimit}));
     if(conditions.length)this.limitText.setText([this.limitText.text,...conditions].filter(Boolean).join('\n'));
+    this.fullLimits=this.limitText.text;
+    this.limitText.setText(this.fullLimits.split('\n')[0]);
     this.goldText.setText(i18n.t('build.gold', { n: this.progress.gold }));
     const titleKey = this.progress.mode==='missions'?'mission.title':this.levelSpec?.boss ? 'build.titleBoss' : 'build.title';
     this.titleText.setText(i18n.t(titleKey, { n: this.progress.level }));

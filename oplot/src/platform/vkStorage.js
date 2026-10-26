@@ -6,13 +6,26 @@ const LIMIT = 3000;
 const MAX_PARTS = 192;
 const encoder = new TextEncoder();
 const pendingCommits = new WeakMap();
+const revisions = new WeakMap();
+const attempts = new WeakMap();
+const acknowledged = new WeakMap();
+export const acknowledgedVkSave = bridge => acknowledged.get(bridge);
+const fingerprint = value => JSON.stringify(value);
+function conflict() { const error = new Error('VK cloud progress changed on another client'); error.code = 'VK_SAVE_CONFLICT'; return error; }
 async function send(bridge, method, params) {
   let timer;
   const commit = method === 'VKWebAppStorageSet' && params.key === ROOT;
   if (commit && pendingCommits.has(bridge)) throw new Error('VK previous commit still pending');
   const request = Promise.resolve().then(() => bridge.send(method, params));
   if (commit) {
+    const attempt = attempts.get(bridge);
     pendingCommits.set(bridge, request);
+    request.then(result => {
+      if (result?.result === true) {
+        revisions.set(bridge, params.value);
+        if (attempt?.root === params.value) acknowledged.set(bridge, attempt.payload);
+      }
+    }, () => {});
     const release = () => { if (pendingCommits.get(bridge) === request) pendingCommits.delete(bridge); };
     request.then(release, release);
   }
@@ -69,7 +82,22 @@ async function root(bridge) {
 }
 
 export async function readVkSave(bridge) {
-  const value = await root(bridge);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const before = await root(bridge);
+    try {
+      const payload = await readGeneration(bridge, before);
+      if (fingerprint(await root(bridge)) !== fingerprint(before)) continue;
+      revisions.set(bridge, fingerprint(before));
+      return payload;
+    } catch (error) {
+      if (fingerprint(await root(bridge)) !== fingerprint(before)) continue;
+      throw error;
+    }
+  }
+  throw new Error('VK cloud changed during read; retry required');
+}
+
+async function readGeneration(bridge, value) {
   if (!manifest(value)) return value; // Existing one-key saves migrate on the next write.
   const chunks = [];
   for (let start = 0; start < value.parts; start += 32) {
@@ -93,6 +121,7 @@ export async function writeVkSave(bridge, payload) {
   // settles, a newer write could be overwritten by its late completion.
   if (pendingCommits.has(bridge)) throw new Error('VK previous commit still pending');
   const previous = await root(bridge);
+  if (revisions.has(bridge) && revisions.get(bridge) !== fingerprint(previous)) throw conflict();
   const hasPrevious = manifest(previous);
   const text = JSON.stringify(payload), parts = splitSave(text);
   // Old builds with SAVE_VERSION=1 see a future root and must not overwrite it.
@@ -102,7 +131,10 @@ export async function writeVkSave(bridge, payload) {
   // Unique part keys also prevent a late response from an older attempt corrupting
   // a newer save. Failed attempts never change the root pointer.
   for (let i = 0; i < parts.length; i++) await set(bridge, keyFor(next, i), parts[i]);
+  if (fingerprint(await root(bridge)) !== fingerprint(previous)) throw conflict();
+  attempts.set(bridge, {root:JSON.stringify(next), payload:JSON.parse(text)});
   await set(bridge, ROOT, JSON.stringify(next));
+  revisions.set(bridge, fingerprint(next));
   // Reclaim the previous generation only after the new pointer is acknowledged.
   // Cleanup failure does not turn an already committed save into a failed one.
   if (hasPrevious) for (let i = 0; i < previous.parts; i++) {

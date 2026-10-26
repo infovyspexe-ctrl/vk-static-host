@@ -17,7 +17,9 @@ export function createButton(scene, x, y, label, onClick, opts = {}) {
   const txt = scene.add.text(0, 0, label, {
     fontFamily: THEME.fontFamily,
     fontSize: opts.fontSize ?? THEME.fontSize.normal,
-    color: textColor
+    color: textColor,
+    align: 'center',
+    wordWrap: opts.maxWidth ? {width:opts.maxWidth-padX*2, useAdvancedWrap:true} : undefined
   }).setOrigin(0.5);
 
   const bg = scene.add.graphics();
@@ -39,6 +41,7 @@ export function createButton(scene, x, y, label, onClick, opts = {}) {
     }
   }
   redraw();
+  txt.on('readability', redraw);
 
   container.setInteractive({ useHandCursor: true });
   container.on('pointerover', () => container.setScale(1.04));

@@ -29,6 +29,7 @@ import { bus } from './events.js';
 const BASE_LAYER = null; // ключ базового слоя сцены (он всегда на дне стека)
 
 const nav = new WeakMap(); // сцена -> { layers: [{ key, items: [{obj,onSelect}], index }] }
+const keyboardBindings = new WeakMap();
 
 function navState(scene) {
   if (!nav.has(scene)) {
@@ -55,13 +56,24 @@ export const Input = {
   setup(scene) {
     const k = scene.input.keyboard;
     if (!k) return;
-    k.on('keydown-UP',    () => { bus.emit('input', 'up');    this._move(scene, -1); });
-    k.on('keydown-LEFT',  () => { bus.emit('input', 'left');  this._move(scene, -1); });
-    k.on('keydown-DOWN',  () => { bus.emit('input', 'down');  this._move(scene, 1); });
-    k.on('keydown-RIGHT', () => { bus.emit('input', 'right'); this._move(scene, 1); });
-    k.on('keydown-ENTER', () => { bus.emit('input', 'confirm'); this._activate(scene); });
-    k.on('keydown-SPACE', () => { bus.emit('input', 'confirm'); this._activate(scene); });
-    k.on('keydown-ESC',   () => bus.emit('input', 'back'));
+    keyboardBindings.get(scene)?.();
+    const handlers = [
+      ['keydown-UP', () => { bus.emit('input', 'up'); this._move(scene, -1); }],
+      ['keydown-LEFT', () => { bus.emit('input', 'left'); this._move(scene, -1); }],
+      ['keydown-DOWN', () => { bus.emit('input', 'down'); this._move(scene, 1); }],
+      ['keydown-RIGHT', () => { bus.emit('input', 'right'); this._move(scene, 1); }],
+      ['keydown-ENTER', () => { bus.emit('input', 'confirm'); this._activate(scene); }],
+      ['keydown-SPACE', () => { bus.emit('input', 'confirm'); this._activate(scene); }],
+      ['keydown-ESC', () => bus.emit('input', 'back')],
+    ];
+    handlers.forEach(([event, fn]) => k.on(event, fn));
+    const detach = () => {
+      handlers.forEach(([event, fn]) => k.off(event, fn));
+      scene.events?.off('shutdown', detach);
+      if (keyboardBindings.get(scene) === detach) keyboardBindings.delete(scene);
+    };
+    keyboardBindings.set(scene, detach);
+    scene.events?.once('shutdown', detach);
   },
 
   // Открыть модальный слой фокуса. Всё, что зарегистрируется ПОСЛЕ вызова, попадёт в него.

@@ -27,14 +27,14 @@ export class BlueprintScene extends Phaser.Scene {
     addWorldBackdrop(this);
     this.text(44, 28, i18n.t('blueprint.title'), 36);
     this.text(44, 84, i18n.t('blueprint.help'), 21, 1180);
-    this.text(44, 145, i18n.t('build.gold', { n: this.progress.gold }), 24);
+    this.text(44, 165, i18n.t('build.gold', { n: this.progress.gold }), 24);
     this.slotButtons = [];
     for (let i = 0; i < 3; i++) {
       const x = 44 + i * 407, cx = x + 190;
       const g = this.add.graphics();
-      g.fillStyle(THEME.colors.panel, .88); g.fillRoundedRect(x, 195, 378, 423, 12);
-      g.lineStyle(2, THEME.colors.neutral, .5); g.strokeRoundedRect(x, 195, 378, 423, 12);
-      this.text(x + 20, 211, i18n.t('blueprint.slot', { n: i + 1 }), 25);
+      g.fillStyle(THEME.colors.panel, .88); g.fillRoundedRect(x, 220, 378, 398, 12);
+      g.lineStyle(2, THEME.colors.neutral, .5); g.strokeRoundedRect(x, 220, 378, 398, 12);
+      this.text(x + 20, 236, i18n.t('blueprint.slot', { n: i + 1 }), 25);
       const preview = previewBlueprint(this.progress, i);
       if (preview.base) {
         const cells = [...preview.base.cells.values()];
