@@ -2,6 +2,7 @@ import { Platform } from './index.js';
 import { AdPolicy } from '../core/adPolicy.js';
 import { Analytics } from '../core/analytics.js';
 import { EVENTS } from '../data/analytics-events.js';
+import { AdDiagnostics } from './adDiagnostics.js';
 
 let policy, busy = false;
 const getPolicy = () => policy ||= new AdPolicy(Platform.cache?.adTiming);
@@ -10,7 +11,10 @@ const persist = () => Platform.save.update({ adTiming: { ...getPolicy().state } 
 export const Monetization = {
   enabled() { return Platform.name === 'vk' && Platform.available && !Platform._loadFailed && !Platform.readOnly; },
   async ready(format) {
-    if (!this.enabled() || busy || !getPolicy().ready(format)) return false;
+    if (!this.enabled() || busy || !getPolicy().ready(format)) {
+      AdDiagnostics.record('gate', format, !this.enabled() ? 'disabled' : busy ? 'busy' : 'cooldown');
+      return false;
+    }
     return Platform.ads.check(format);
   },
   async show(format, placement, onRewarded) {
@@ -22,9 +26,11 @@ export const Monetization = {
       await Platform.save.flush();
       if (Platform._dirty || Platform._loadFailed) return { shown: false, rewarded: false, saveFailed: true };
       getPolicy().attempted(); persist();
+      AdDiagnostics.record('show', format, 'requested');
       Analytics.event(EVENTS.AD_REQUEST, { placement, format });
       return await new Promise(resolve => {
         const onClose = async (result, shown) => {
+          AdDiagnostics.record('close', format, shown ? 'shown' : 'not_shown');
           if (shown) {
             getPolicy().opened(format);
             Analytics.event(format === 'reward' ? EVENTS.REWARD_AD_SHOWN : EVENTS.INTERSTITIAL_AD_SHOWN, { placement, rewarded });

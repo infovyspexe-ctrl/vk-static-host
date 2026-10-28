@@ -19,6 +19,7 @@
 // - Большие сохранения пишет vkStorage.js с атомарным переключением манифеста.
 
 import { readVkSave, writeVkSave, acknowledgedVkSave } from '../vkStorage.js';
+import { AdDiagnostics } from '../adDiagnostics.js';
 
 function withTimeout(promise, ms) {
   let timer;
@@ -90,6 +91,8 @@ export const VkAdapter = {
       // adapters/yandex.js (см. комментарий там).
       await withTimeout(this.bridge.send('VKWebAppInit', {}), 12000);
       this.available = true;
+      // Optional support trace is asynchronous and cannot gate cloud/game startup.
+      AdDiagnostics.init(this.bridge);
       window.vkBridgeInstance = this.bridge; // отладка из консоли
       console.log('[platform:vk] VK Bridge инициализирован');
     } catch (e) {
@@ -121,9 +124,19 @@ export const VkAdapter = {
     // для rewarded это условие модерации: кнопку награды показывать только при true.
     check(a, format) {
       if (!a.available) return Promise.resolve(false);
+      const started = Date.now();
       return withTimeout(a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format }), 1500)
-        .then((res) => !!(res && res.result))
-        .catch(() => false);
+        .then((res) => {
+          const ready = !!(res && res.result);
+          AdDiagnostics.record('check', format, ready ? 'available' : 'no_inventory', { ms: Date.now() - started });
+          return ready;
+        })
+        .catch(error => {
+          AdDiagnostics.record('check', format, error?.message === 'VK request timeout' ? 'timeout' : 'sdk_error', {
+            ms: Date.now() - started, code: error?.error_data?.error_code,
+          });
+          return false;
+        });
     },
 
     showFullscreen(a, { onOpen, onClose }) {
