@@ -36,7 +36,7 @@ export function setupResultAds(scene) {
     if (!eligible() || button || scene.adPending) return;
     if (!(await Monetization.ready('reward')) || !live() || !eligible() || button || scene.adPending) return;
     const { width, height } = scene.scale;
-    button = createButton(scene, scene.won ? width * .81 : width / 2, height * (scene.won ? .14 : .82),
+    button = createButton(scene, scene.won ? width * .81 : width / 2, scene.won ? 50 : height * .82,
       i18n.t(scene.won ? 'ads.double' : 'ads.reinforce'), async () => {
         if (!live() || scene.adPending || (!retrySave && !eligible())) return;
         const cover = lock(scene);
@@ -64,7 +64,8 @@ export function setupResultAds(scene) {
             scene.time.delayedCall(2500, () => { button?.destroy(); button = null; });
           }
         } finally { if (live()) unlock(scene, cover); }
-      }, { fontSize: '24px', paddingX: 16, paddingY: 28 });
+      }, { fontSize: '24px', paddingX: 16, paddingY: scene.won ? 12 : 28,
+        maxWidth: scene.won ? width * .36 : width * .8 });
     Analytics.event(EVENTS.AD_OFFER, { placement, level: rewardLevel });
   };
   refresh();

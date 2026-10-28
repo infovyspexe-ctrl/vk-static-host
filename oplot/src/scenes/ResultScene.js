@@ -46,9 +46,10 @@ export class ResultScene extends Phaser.Scene {
     // друга (карта считает размер от ширины, а ширина в альбоме огромная).
     // Доли ниже теснее по вертикали именно поэтому, не проверка на глаз —
     // измерено живым прогоном, см. NOTES.md, «Оплот: переход на альбом».
-    const titleY = height * (landscape ? 0.14 : 0.2);
-    const rewardY = height * (landscape ? 0.26 : 0.3);
-    const pickY = height * (landscape ? 0.40 : 0.42);
+    // Reserve the top row for Menu and the optional rewarded-ad control.
+    const titleY = height * (this.won ? 0.20 : landscape ? 0.14 : 0.2);
+    const rewardY = height * 0.29;
+    const pickY = height * 0.42;
     const cardsY = height * (landscape ? 0.66 : 0.58);
     const retryY = height * (landscape ? 0.6 : 0.6);
 
@@ -80,7 +81,7 @@ export class ResultScene extends Phaser.Scene {
       this.rewardLabel = reward;
 
       const unlocked = newlyCompleted ? unlockedAtLevel(this.progress.level) : [];
-      if (unlocked.length) this.add.text(width / 2, height * (landscape ? .335 : .36),
+      if (unlocked.length) this.add.text(width / 2, height * .36,
         i18n.t('result.unlocked',{items:unlocked.map(item=>i18n.t(`${item.kind}.${item.typeId}`)).join(', ')}),{
           fontFamily:THEME.fontFamily,fontSize:'20px',color:THEME.colors.successText,
         }).setOrigin(.5);
