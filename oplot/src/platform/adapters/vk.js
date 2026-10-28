@@ -125,7 +125,10 @@ export const VkAdapter = {
     check(a, format) {
       if (!a.available) return Promise.resolve(false);
       const started = Date.now();
-      return withTimeout(a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format }), 1500)
+      // Native Android preload exceeded the former 1.5 s deadline in live QA.
+      // Keep this below the platform's 8 s pre-open watchdog. UI stays usable
+      // during the background offer check; no ad is shown after this timeout.
+      return withTimeout(a.bridge.send('VKWebAppCheckNativeAds', { ad_format: format }), 6000)
         .then((res) => {
           const ready = !!(res && res.result);
           AdDiagnostics.record('check', format, ready ? 'available' : 'no_inventory', { ms: Date.now() - started });
