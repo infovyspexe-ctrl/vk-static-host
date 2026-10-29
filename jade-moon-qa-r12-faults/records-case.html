@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>Isolated records case</title><script type="module">
+const id=new URLSearchParams(location.search).get('case'),sleep=ms=>new Promise(r=>setTimeout(r,ms)),eq=(a,b)=>{if(JSON.stringify(a)!==JSON.stringify(b))throw Error(JSON.stringify({actual:a,expected:b}))};
+const memory=new Map(),storage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,String(v)),removeItem:k=>memory.delete(k),clear:()=>memory.clear(),key:i=>[...memory.keys()][i]??null,get length(){return memory.size}};
+Object.defineProperty(window,'localStorage',{configurable:true,value:storage});
+const manifestKey='jadeMoon_manifest_v1',initialRaw=JSON.stringify({v:1,parts:1,revision:7,bank:'a'}),original={marker:'remote-preserve',score:100},next={marker:'pending-preserve',score:140};
+const cloud=new Map([[manifestKey,initialRaw],['jadeMoon_data_v1_a_0',JSON.stringify(original)]]);let reads=0,writes=0,readFailure=false,writeFailures=0,offset=0;const nativeNow=Date.now;Date.now=()=>nativeNow()+offset;
+window.vkBridge={subscribe(){},unsubscribe(){},async send(method,p={}){
+ if(method==='VKWebAppInit'){if(id==='slow_init')await sleep(1200);return {result:true}}
+ if(method==='VKWebAppStorageGet'){reads++;if(readFailure)throw Error('injected read failure');return {keys:p.keys.map(key=>({key,value:cloud.get(key)||''}))}}
+ if(method==='VKWebAppStorageSet'){writes++;if(writeFailures>0){writeFailures--;throw Error('injected write failure')}cloud.set(p.key,p.value);return {result:true}}
+ throw Error('Unexpected Bridge method '+method);
+}};
+const load=token=>import('../jade-moon-qa-r12/src/platform/records.js?isolated='+id+'-'+token);
+const current=()=>{const m=JSON.parse(cloud.get(manifestKey));return JSON.parse(Array.from({length:m.parts},(_,i)=>cloud.get('jadeMoon_data_v1_'+(m.v===1?m.bank:m.generation)+'_'+i)).join(''))};
+const waitFor=async fn=>{const deadline=performance.now()+3500;while(!fn()){if(performance.now()>deadline)throw Error('condition timeout');await sleep(30)}};
+let result={id};try{
+ if(id==='slow_init'){const m=await load('one'),t=performance.now();eq(await m.initRecords(),original);const elapsed=Math.round(performance.now()-t);eq(m.cloudStatus(),'saved');eq(writes,0);result.details={initDelayMs:1200,elapsedMs:elapsed,returnedRemote:true,realCloudWrites:0}}
+ if(id==='read_failure_retry'){readFailure=true;const m=await load('one');eq(await m.initRecords(),null);eq(m.cloudStatus(),'offline');eq(m.saveCloud({}),false);eq(writes,0);eq(cloud.get(manifestKey),initialRaw);readFailure=false;eq(await m.initRecords(),original);eq(m.cloudStatus(),'saved');eq(writes,0);result.details={failedReadReturnedNull:true,emptySaveRejected:true,retryMarker:current().marker,fakeWrites:writes}}
+ if(id==='write_failure_retry'){const m=await load('one');eq(await m.initRecords(),original);m.bindPlatform({pause(){},accountChanged(){}});writeFailures=1;eq(m.saveCloud(next),true);await waitFor(()=>m.cloudStatus()==='offline');eq(current(),original);const pending=JSON.parse(storage.getItem('jadeMoon_vk_pending_isolated-fault-test'));eq(pending.data,next);offset=31000;window.dispatchEvent(new Event('online'));await waitFor(()=>m.cloudStatus()==='saved');eq(current(),next);eq(storage.getItem('jadeMoon_vk_pending_isolated-fault-test'),null);result.details={remoteUnchangedAfterFailure:true,pendingRetained:true,retryMarker:current().marker,fakeWriteAttempts:writes,advancedBudgetClockMs:31000,realCloudWrites:0}}
+ if(id==='pending_reload'){const m=await load('before');eq(await m.initRecords(),original);eq(m.saveCloud(next,{defer:true}),true);eq(writes,0);const loaded=await load('after');eq(await loaded.initRecords(),next);await waitFor(()=>loaded.cloudStatus()==='saved'&&current().marker===next.marker);eq(current(),next);eq(storage.getItem('jadeMoon_vk_pending_isolated-fault-test'),null);result.details={freshModuleReturnedPending:true,committedMarker:current().marker,fakeWrites:writes,realCloudWrites:0}}
+ result.pass=true;
+}catch(error){result.pass=false;result.error=String(error)}
+parent.postMessage({kind:'jade-records-case',result},location.origin);
+</script>

@@ -1,0 +1,69 @@
+/* Illustration is never an input surface, even when flex space becomes tight. */
+.hero-tiles,.hero-tiles *{pointer-events:none}
+/* Keep the season header separate from its contents on short portrait screens. */
+@media(max-width:600px) and (max-height:620px){
+ #season .season-body{justify-content:flex-start;gap:7px}
+ #season .quest{min-height:27px;padding:1px 0}
+ #season .quest div{gap:1px;line-height:1.15}
+ #season .quest-icon.tile{width:19px;height:25px}
+ #season .quest button{height:24px}
+ #season .quest-heading{margin-bottom:2px}
+ #season .season-reward{gap:3px}
+}
+@media(max-height:500px) and (min-width:480px) and (max-width:700px){
+ #app{padding:5px 10px}
+ .topbar{height:38px;flex:none}
+ .home-screen{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:38px 78px 116px;align-content:center;justify-items:center;column-gap:8px;width:100%;padding:0;margin:auto}
+ .home-screen .game-logo{grid-column:1;grid-row:1;margin:0}
+ .home-screen .game-logo h1{font-size:26px}
+ .home-screen .game-logo>span{font-size:6px;padding:1px 10px}
+ .home-screen .logo-flower{font-size:25px;right:-17px}
+ .home-screen .season-banner{grid-column:1;grid-row:2;width:100%;height:66px;margin:0;padding:5px 9px}
+ .season-banner-copy>small{font-size:8px}.season-banner-copy>strong{font-size:13px}.banner-count{font-size:11px}.banner-count em{font-size:7px;margin:2px 0 0;display:block}
+ .banner-prizes{right:17px;top:6px;width:63px;height:53px}.banner-prizes .tile{width:30px;height:41px}.banner-prizes .tile+.tile{left:23px;top:7px}.banner-arrow{right:3px;top:17px;font-size:23px}
+ .home-screen .hero-tiles{grid-column:2;grid-row:1/3;width:100%;height:106px;margin:0}
+ .home-screen .hero-tiles .tile{width:52px;height:70px}
+ .hero-tiles .tile:nth-child(1){transform:translate(-65px,10px) rotate(-23deg)}.hero-tiles .tile:nth-child(2){transform:translate(-34px,0) rotate(-13deg)}.hero-tiles .tile:nth-child(4){transform:translate(34px,0) rotate(13deg)}.hero-tiles .tile:nth-child(5){transform:translate(65px,10px) rotate(23deg)}
+ .home-screen .play-area{grid-column:1;grid-row:3;align-self:center}
+ .home-screen .play-button{min-width:195px;min-height:57px;font-size:20px;padding:7px 18px}
+ .home-screen .difficulty-chip{margin-top:10px;font-size:10px;padding:3px 8px}
+ .home-screen .home-actions{grid-column:2;grid-row:3;gap:3px;margin:0;align-self:center}
+ .home-screen .game-shortcut{width:74px;height:86px}.home-screen .game-shortcut .object-icon{width:60px;height:60px}.home-screen .game-shortcut b{font-size:8px;padding:3px 5px}
+ .game-screen{width:calc(100% - 224px);max-width:330px}
+ .game-heading{position:absolute;left:-112px;top:27%;width:107px}.game-heading h2{font-size:16px}.game-heading #difficulty-label{font-size:9px}
+ .hud{position:absolute;right:-108px;top:8%;width:103px;height:auto;flex-direction:column;gap:7px}.hud strong{font-size:18px}
+ #match-stage{height:36px;width:150px;margin-top:0}#match-stage .slot{width:23px;height:29px}#combo{top:30px;font-size:8px}
+ #board-wrap{margin-top:6px}#board-wrap:before{inset:0 2px -2px}
+ .tools{position:absolute;right:-112px;bottom:4px;display:grid;grid-template-columns:repeat(2,51px);gap:6px;width:108px;height:105px;margin:0}
+ .tools button{width:51px;height:47px;padding:0;border-radius:10px}.tools .object-icon{width:34px;height:34px}.tools b{font-size:6px}.tools small{height:17px;min-width:17px;line-height:13px;font-size:8px}
+ .tile-tray{width:100%}
+ .season-body{flex-direction:row;gap:12px}.quest-scroll{width:300px;min-width:0;padding:5px 9px}.quest{min-height:28px;padding:2px 0;gap:5px}.quest div{font-size:9px}.quest button{min-width:53px;height:25px}.quest-play{margin:3px auto;padding:3px 10px}.season-note{font-size:6px}
+ .season-reward{min-width:0;gap:5px}.season-reward .play-button{min-width:180px}.reward-stage{gap:14px}.reward-hint{font-size:7px}.reward-ribbon{font-size:7px;padding:3px 6px}
+ .collection-screen{width:100%}.collection-stage{min-width:0}.collection-stage>.round{width:30px;height:30px}#set-tiles{width:210px}#set-tiles .tile{width:60px;height:83px}.display-plinth{width:215px}.set-info .play-button{min-width:180px}.collection-screen .screen-ribbon{right:40px;min-width:180px}
+}
+
+.platform-loading{position:fixed;inset:0;z-index:10000;background:#eaf7f4;color:#174f4c;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;text-align:center;padding:24px;font-family:Georgia,serif}.platform-loading p{max-width:360px;line-height:1.5}.platform-loading h2{font-size:28px}
+@media(max-width:360px){
+ .home-actions{width:100%;gap:4px}.game-shortcut{flex:1;min-width:0;width:auto}.game-shortcut b{font-size:9px;padding:5px 6px}
+ .meta-actions{width:100%;gap:7px}.meta-actions .secondary{flex:1;min-width:0;padding:8px 7px;font-size:11px}
+}
+/* Keep native WebView button padding/appearance out of fixed-size controls. */
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button{-webkit-appearance:none;appearance:none}
+.round{padding:0;line-height:1;min-width:0;min-height:0;overflow:hidden}
+.round svg{display:block;max-width:100%;max-height:100%;min-width:0;min-height:0}
+.tools button{flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+/* WebView can clip filtered atlas SVGs after portrait restoration. */
+.tools .object-icon{flex-shrink:0;filter:none}
+/* Dynamic help icons must fit the available dialog width on narrow screens. */
+#dialog-backdrop{grid-template-columns:minmax(0,1fr)}
+#dialog{min-width:0;max-width:100%}
+.help-art{min-width:0}
+.help-art .object-icon{flex:0 1 90px;min-width:0;max-width:90px;filter:none}
+/* Short native landscapes need separate vertical space for stats and tools. */
+@media(max-height:500px) and (min-width:480px){
+ .hud{top:0;margin:0;gap:4px}
+ .hud strong{font-size:18px}
+ .hud small{font-size:7px}
+ .hud .pairs-medal{width:36px;height:36px;padding:0;border-width:2px}
+}

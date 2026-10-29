@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>R12 records faults</title><style>body{background:#102820;color:white;font:16px sans-serif;padding:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere}iframe{width:1px;height:1px;border:0}</style><h1>R12 records integration</h1><p>Injected Bridge and memory storage only; zero real cloud writes.</p><div id="status">RUNNING</div><div id="rows"></div><pre id="result"></pre>
+<a id="fresh-link" href="../jade-moon-qa-r12-fresh/?vk_app_id=54819436&amp;vk_user_id=isolated-fresh">Fresh game test</a>
+<script type="module">
+const rows=[],started=new Date().toISOString();
+for(const id of ['slow_init','read_failure_retry','write_failure_retry','pending_reload']){
+ const result=await new Promise(resolve=>{const f=document.createElement('iframe');let timer;const done=v=>{clearTimeout(timer);window.removeEventListener('message',receive);f.remove();resolve(v)};const receive=e=>{if(e.source===f.contentWindow&&e.data?.kind==='jade-records-case')done(e.data.result)};window.addEventListener('message',receive);f.src='records-case.html?case='+id+'&vk_app_id=54819436&vk_user_id=isolated-fault-test';document.body.append(f);timer=setTimeout(()=>done({id,pass:false,error:'harness deadline'}),10000)});
+ rows.push(result);const p=document.createElement('p');p.textContent=(result.pass?'PASS ':'FAIL ')+id+' '+JSON.stringify(result.details??result.error);document.querySelector('#rows').append(p);
+}
+const result={kind:'injected-records-integration-native-webview',started,finished:new Date().toISOString(),userAgent:navigator.userAgent,realCloudWrites:0,pass:rows.every(x=>x.pass),tests:rows};window.__jadeRecordsResult=result;document.querySelector('#status').textContent='COMPLETE '+rows.filter(x=>x.pass).length+'/'+rows.length;document.querySelector('#result').textContent=JSON.stringify(result);
+</script>
