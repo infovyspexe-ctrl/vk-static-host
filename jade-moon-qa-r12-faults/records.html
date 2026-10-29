@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>R12 records faults</title><style>body{background:#102820;color:white;font:16px sans-serif;padding:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere}iframe{width:1px;height:1px;border:0}</style><h1>R12 records integration</h1><p>Injected Bridge and memory storage only; zero real cloud writes.</p><div id="status">RUNNING</div><div id="rows"></div><pre id="result"></pre>
 <a id="fresh-link" href="../jade-moon-qa-r12-fresh/?vk_app_id=54819436&amp;vk_user_id=isolated-fresh">Fresh game test</a>
+<script src="../jade-moon-qa-r12/vendor/vk-bridge.min.js"></script><script>window.vkBridge.send('VKWebAppInit',{}).catch(()=>{});</script>
 <script type="module">
 const rows=[],started=new Date().toISOString();
 for(const id of ['slow_init','read_failure_retry','write_failure_retry','pending_reload']){
