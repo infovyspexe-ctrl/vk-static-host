@@ -64,6 +64,15 @@ save.meta.deck[slot]=id;return true;
 }
 export function replacementArt(save){return save.meta.owned.filter(id=>!save.meta.deck.includes(id));}
 export function seasonData(save,month=monthKey()){return save.meta.seasons[month]??={tokens:0,spent:0,claims:{}};}
+export function dailyBonus(save,date=dayKey()){
+ const last=save.meta.checkin?.day||'',previous=new Date(Date.parse(date+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+ const claimed=last>=date,streak=claimed?(save.meta.checkin?.streak||1):last===previous?(save.meta.checkin.streak||0)+1:1;
+ return {claimed,streak,reward:Math.min(10,3+streak),day:date};
+}
+export function claimDailyBonus(save,date=dayKey()){
+ const bonus=dailyBonus(save,date);if(bonus.claimed)return null;
+ save.meta.checkin={day:date,streak:bonus.streak,maxStreak:Math.max(save.meta.checkin?.maxStreak||save.meta.checkin?.streak||0,bonus.streak)};seasonData(save,date.slice(0,7)).tokens+=bonus.reward;return bonus;
+}
 export function tasks(save,date=dayKey()){
 const d=save.meta.days[date]||{score:0,wins:0,combo:0,vortices:0,daily:0};
 return [{id:'score',name:'Набери 2 000 очков',value:d.score,goal:2000,reward:10},{id:'wins',name:'Пройди 3 уровня',value:d.wins,goal:3,reward:10},{id:'combo',name:'Собери комбо ×5',value:d.combo,goal:5,reward:10},{id:'vortices',name:'Вызови драконий вихрь',value:d.vortices,goal:1,reward:15},{id:'daily',name:'Пройди испытание дня',value:d.daily,goal:1,reward:15}];
@@ -95,6 +104,7 @@ save.meta.finished[run.runId]=true;
 const ranked=recordEligible(run),key=boardKey(run),best=save.meta.records[key]||0;
 if(ranked)save.meta.records[key]=Math.max(best,run.score);
 const d=save.meta.days[date]??={score:0,wins:0,combo:0,vortices:0,daily:0};
+save.meta.feats??={};if((run.vortices||0)>=3)save.meta.feats.threeVortices=true;if(!hasAssistance(run)&&run.bestCombo>=7)save.meta.feats.cleanFlow=true;
 d.score+=run.score;d.wins++;d.combo=Math.max(d.combo,run.bestCombo);d.vortices+=run.vortices||0;if(run.daily===date)d.daily=1;
 const gift=queueGift(save,'welcome');
 return {best:ranked&&run.score>best,gift,ranked,legacy:run.rules!==RULES};
