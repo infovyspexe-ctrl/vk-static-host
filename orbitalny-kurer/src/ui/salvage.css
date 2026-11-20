@@ -13,7 +13,31 @@
 .station-art{width:54px;height:54px;margin-top:8px;background-image:url('../../assets/generated/station-sprites.png');background-size:300% 100%;background-repeat:no-repeat;filter:drop-shadow(0 4px 7px #0008)}.station-hab{background-position:0 0}.station-lab{background-position:50% 0}.station-moon{background-position:100% 0}
 .contract-copy{display:grid;grid-template-columns:1fr auto;align-content:start;min-width:0}.contract-copy strong{grid-column:1/-1;color:#edf1ff;font:700 .82rem/1.15 "Arial Narrow",Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #contracts .contract-copy>small{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;margin:5px 0}#contracts .contract-copy>small span{display:flex;align-items:center;gap:1px;color:var(--c);font-size:.68rem}#contracts .contract-copy>small .cargo-dot{width:18px!important;height:18px!important;flex-basis:18px}
+#contracts .contract-copy>small span.need{flex:1 1 100%;flex-wrap:wrap;align-items:baseline;gap:2px 8px}#contracts .contract-copy>small span.need b{flex:1 1 calc(100% - 28px);font-weight:800}#contracts .contract-copy>small span.need .qty{color:#d5dcf8;font-size:.62rem;font-weight:700;letter-spacing:0}#contracts .contract-copy>small span.need .qty+.qty::before{content:"· ";color:#8e99c4}
 #contracts em{grid-column:1;color:var(--nav-hi);font-size:.72rem;font-style:normal;font-weight:900}.aboard{grid-column:1/-1;margin-top:4px;color:var(--muted);font-size:.66rem}.aboard b{color:#fff}#contracts u{grid-column:2;grid-row:3/5;align-self:end;color:var(--nav-hi);font-size:.66rem;font-weight:900;text-align:right;text-decoration:none;text-transform:uppercase}
-.contract-flash{position:absolute;inset:0;z-index:4;display:grid;place-content:center;text-align:center;background:#121731f5;animation:contract-in .22s ease-out}.contract-flash::before{content:"";position:absolute;inset:8px;border:1px solid var(--nav)}.contract-flash b{color:var(--nav-hi);font-size:.8rem;letter-spacing:.1em}.contract-flash small{display:block!important;margin-top:5px!important;color:#fff!important}.contract-flash.deposit b{color:var(--fuel)}
+.contract-flash{position:absolute;inset:0;z-index:4;grid-column:1/-1;grid-row:1/-1;display:grid;place-content:center;text-align:center;background:#121731;animation:contract-in .22s ease-out}.contract-flash::before{content:"";position:absolute;inset:8px;border:1px solid var(--nav)}.contract-flash b{color:var(--nav-hi);font-size:.8rem;letter-spacing:.1em}.contract-flash small{display:block!important;margin-top:5px!important;color:#fff!important}.contract-flash.deposit b{color:var(--fuel)}
 @keyframes warning{to{filter:drop-shadow(0 0 11px var(--danger));transform:translate(-50%,-50%) scale(1.12)}}@keyframes contract-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.space[data-rings="1"] .o2,.space[data-rings="1"] .o3,.space[data-rings="1"] .a1,.space[data-rings="1"] .a2,.space[data-rings="1"] .course-label,.space[data-rings="1"] .intercept,.space[data-rings="2"] .o3,.space[data-rings="2"] .a1{display:none}
+.junk.invite{animation:invite 1s ease-in-out infinite}
+.junk.invite::after{content:"";position:absolute;inset:-9px;border:2px solid #e7ecff;border-radius:50%;pointer-events:none;animation:ring 1.15s ease-out infinite}
+@keyframes invite{50%{transform:translate(-50%,-50%) scale(1.22);filter:brightness(1.35) drop-shadow(0 0 12px #dce4ff)}}
+@keyframes ring{to{transform:scale(1.4);opacity:0}}
+.contract-copy .slots{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 2px}
+.contract-copy .slot{display:block;width:40px;height:40px;background-image:url('../../assets/generated/cargo-sprites.png');background-size:300% 100%;background-repeat:no-repeat}
+.contract-copy .slot.cargo-metal{background-position:0 0}.contract-copy .slot.cargo-fuel{background-position:50% 0}.contract-copy .slot.cargo-tech{background-position:100% 0}
+.contract-copy .slot.empty{opacity:.8;filter:grayscale(.15) brightness(.8)}
+.contract-copy .slot.ready{box-shadow:0 0 0 2px var(--c),0 0 10px var(--c)}
+.contract-copy .slot.filled{filter:none;opacity:1}
+#contracts button.ready{animation:ready 1s ease-in-out infinite}
+#upgrades button.invite-buy{animation:ready 1s ease-in-out infinite}
+@keyframes ready{50%{box-shadow:inset 0 0 0 2px var(--nav-hi),0 0 18px #7d8fff88}}
+.salvage[data-beat="catch"] #contracts button:disabled{opacity:1}
+.salvage[data-beat="full"] .goal b{color:var(--danger)}
+.space.shock{box-shadow:inset 0 0 90px #ff4f7299}
+#inventory.types-1{grid-template-columns:minmax(0,360px)}
+#inventory.types-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+aside.no-upgrades{grid-template-columns:1fr;grid-template-areas:"orders-title" "contracts"}
+aside.no-upgrades #upTitle,aside.no-upgrades #upgrades{display:none}
+#contracts button.done{opacity:.85}
+@media(min-width:761px){#contracts.stations-1{grid-template-columns:minmax(0,480px)}#contracts.stations-2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.junk{width:49px;height:49px}#contracts button{grid-template-columns:50px minmax(0,1fr);min-height:101px}.station-art{width:48px;height:48px}#contracts button::after{left:20px}.contract-copy strong{font-size:.75rem}}
